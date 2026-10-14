@@ -9,6 +9,7 @@ import {
   Clock,
   Swords,
   PlusCircle,
+  UserPlus,
   Sparkles,
   ShieldAlert,
   Search,
@@ -40,10 +41,6 @@ interface Match {
   createdAt: string;
   submitter: { id: string; displayName: string; roomNumber: string | null };
   opponent: { id: string; displayName: string; roomNumber: string | null };
-  submitterEloBefore?: number;
-  submitterEloAfter?: number;
-  opponentEloBefore?: number;
-  opponentEloAfter?: number;
 }
 
 export default function HomePage() {
@@ -52,16 +49,25 @@ export default function HomePage() {
   const [recentMatches, setRecentMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [showLogModal, setShowLogModal] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // Form State
+  // Modals
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
+
+  // Match Form State
   const [submitterId, setSubmitterId] = useState("");
   const [opponentId, setOpponentId] = useState("");
   const [submitterScore, setSubmitterScore] = useState("21");
   const [opponentScore, setOpponentScore] = useState("18");
   const [notes, setNotes] = useState("");
   const [formError, setFormError] = useState("");
+
+  // Add Player Form State
+  const [newPlayerName, setNewPlayerName] = useState("");
+  const [newPlayerRoom, setNewPlayerRoom] = useState("");
+  const [newPlayerEmail, setNewPlayerEmail] = useState("");
+  const [playerFormError, setPlayerFormError] = useState("");
 
   const fetchData = async () => {
     try {
@@ -90,6 +96,44 @@ export default function HomePage() {
       if (res.ok) {
         await fetchData();
       }
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCreatePlayer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPlayerFormError("");
+
+    if (!newPlayerName.trim()) {
+      setPlayerFormError("Please enter the player's name.");
+      return;
+    }
+
+    setActionLoading("createPlayer");
+    try {
+      const res = await fetch("/api/players", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: newPlayerName,
+          roomNumber: newPlayerRoom,
+          email: newPlayerEmail,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setPlayerFormError(data.error || "Failed to add player.");
+      } else {
+        setNewPlayerName("");
+        setNewPlayerRoom("");
+        setNewPlayerEmail("");
+        setShowAddPlayerModal(false);
+        await fetchData();
+      }
+    } catch (err) {
+      setPlayerFormError("An unexpected error occurred.");
     } finally {
       setActionLoading(null);
     }
@@ -178,7 +222,7 @@ export default function HomePage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-slate-950 text-slate-100 pb-16">
       {/* Top Navigation */}
       <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4">
@@ -194,10 +238,17 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setShowAddPlayerModal(true)}
+              className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-xs sm:text-sm px-3.5 py-2 rounded-lg border border-slate-700 transition"
+            >
+              <UserPlus className="w-4 h-4 text-emerald-400" /> Add Player
+            </button>
+
             <button
               onClick={() => setShowLogModal(true)}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm px-4 py-2 rounded-lg transition-all shadow-md shadow-emerald-600/30 active:scale-95"
+              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm px-4 py-2 rounded-lg transition-all shadow-md shadow-emerald-600/30 active:scale-95"
             >
               <PlusCircle className="w-4 h-4" /> Log Match
             </button>
@@ -209,7 +260,7 @@ export default function HomePage() {
                 className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg border border-slate-700 transition"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                {actionLoading === "seed" ? "Seeding..." : "Seed Dorm Players"}
+                {actionLoading === "seed" ? "Seeding..." : "Seed Demo Players"}
               </button>
             )}
 
@@ -228,14 +279,14 @@ export default function HomePage() {
         {/* Pending Match Confirmations Banner */}
         {pendingMatches.length > 0 && (
           <section className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 rounded-2xl p-5 shadow-xl">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-2">
               <Clock className="w-5 h-5 text-amber-400 animate-pulse" />
               <h2 className="text-base font-bold text-amber-300">
                 Matches Awaiting Opponent Confirmation ({pendingMatches.length})
               </h2>
             </div>
             <p className="text-xs text-slate-400 mb-4">
-              Submitted matches remain pending and do not affect ELO ratings until confirmed by the designated opponent.
+              Submitted matches remain pending and do not affect ELO ratings until confirmed by the opponent.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -301,15 +352,24 @@ export default function HomePage() {
               <span className="text-xs text-slate-400">({players.length} registered players)</span>
             </div>
 
-            <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search player or room..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-              />
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-64">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search player or room..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <button
+                onClick={() => setShowAddPlayerModal(true)}
+                className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold px-3 py-1.5 rounded-lg transition whitespace-nowrap"
+              >
+                + Add Player
+              </button>
             </div>
           </div>
 
@@ -333,14 +393,22 @@ export default function HomePage() {
                       {loading ? (
                         "Loading standings..."
                       ) : players.length === 0 ? (
-                        <div className="space-y-3">
-                          <p>No players registered yet in Nicholson Dorm.</p>
-                          <button
-                            onClick={handleSeed}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition"
-                          >
-                            Seed Sample Nicholson Players
-                          </button>
+                        <div className="space-y-4 max-w-sm mx-auto">
+                          <p className="text-slate-400">No players registered yet in Nicholson Dorm.</p>
+                          <div className="flex gap-2 justify-center">
+                            <button
+                              onClick={() => setShowAddPlayerModal(true)}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition"
+                            >
+                              + Add First Player
+                            </button>
+                            <button
+                              onClick={handleSeed}
+                              className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold px-4 py-2 rounded-lg transition border border-slate-700"
+                            >
+                              ⚡ Seed Demo Players
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         "No players match your search filter."
@@ -469,6 +537,94 @@ export default function HomePage() {
           </section>
         )}
       </main>
+
+      {/* Add Player Modal */}
+      {showAddPlayerModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-emerald-400" /> Register Nicholson Player
+              </h2>
+              <button
+                onClick={() => setShowAddPlayerModal(false)}
+                className="text-slate-400 hover:text-white text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400 mb-4">
+              Add a dorm resident to the Nicholson ping-pong league. New players start with a baseline ELO rating of <strong>1200.0</strong>.
+            </p>
+
+            {playerFormError && (
+              <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg text-rose-400 text-xs flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 flex-shrink-0" /> {playerFormError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreatePlayer} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Full Name / Nickname *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Milo Palmer"
+                  value={newPlayerName}
+                  onChange={(e) => setNewPlayerName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Dorm Room Number (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 401A"
+                  value={newPlayerRoom}
+                  onChange={(e) => setNewPlayerRoom(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  School / Contact Email (Optional)
+                </label>
+                <input
+                  type="email"
+                  placeholder="e.g. mpalmer@school.edu"
+                  value={newPlayerEmail}
+                  onChange={(e) => setNewPlayerEmail(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddPlayerModal(false)}
+                  className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium py-2.5 rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading === "createPlayer"}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold py-2.5 rounded-lg transition shadow-lg shadow-emerald-600/30"
+                >
+                  {actionLoading === "createPlayer" ? "Adding..." : "Add Player"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Log Match Modal */}
       {showLogModal && (
