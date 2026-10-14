@@ -526,46 +526,42 @@ export default function HomePage() {
         </section>
 
         {/* Recent Confirmed Matches */}
-        {recentMatches.length > 0 && (
+        {recentMatches.filter((rm) => rm.status === "CONFIRMED").length > 0 && (
           <section className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5">
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
               <Swords className="w-4 h-4 text-slate-400" /> Recent Confirmed Games
             </h3>
             <div className="divide-y divide-slate-800/60">
-              {recentMatches.map((rm) => (
-                <div
-                  key={rm.id}
-                  className="py-3 flex items-center justify-between text-xs flex-wrap gap-2"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-slate-400 font-mono">
-                      {new Date(rm.createdAt).toLocaleDateString()}
-                    </span>
-                    <span className="font-semibold text-white">
-                      {rm.submitter.displayName} vs {rm.opponent.displayName}
-                    </span>
-                    {rm.notes && (
-                      <span className="text-slate-500 italic hidden sm:inline">
-                        — "{rm.notes}"
+              {recentMatches
+                .filter((rm) => rm.status === "CONFIRMED")
+                .map((rm) => (
+                  <div
+                    key={rm.id}
+                    className="py-3 flex items-center justify-between text-xs flex-wrap gap-2"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-slate-400 font-mono">
+                        {new Date(rm.createdAt).toLocaleDateString()}
                       </span>
-                    )}
+                      <span className="font-semibold text-white">
+                        {rm.submitter.displayName} vs {rm.opponent.displayName}
+                      </span>
+                      {rm.notes && (
+                        <span className="text-slate-500 italic hidden sm:inline">
+                          — "{rm.notes}"
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono font-bold text-white bg-slate-800 px-2 py-0.5 rounded">
+                        {rm.submitterScore} - {rm.opponentScore}
+                      </span>
+                      <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold px-2 py-0.5 rounded text-[11px] flex items-center gap-1">
+                        ✓ Confirmed
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono font-bold text-white bg-slate-800 px-2 py-0.5 rounded">
-                      {rm.submitterScore} - {rm.opponentScore}
-                    </span>
-                    <span
-                      className={`font-semibold px-2 py-0.5 rounded text-[11px] ${
-                        rm.status === "CONFIRMED"
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-                      }`}
-                    >
-                      {rm.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           </section>
         )}

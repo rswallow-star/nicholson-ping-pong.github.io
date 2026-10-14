@@ -34,7 +34,7 @@ export async function GET() {
 
     const recentMatches = await prisma.match.findMany({
       where: {
-        status: { in: ["CONFIRMED", "REJECTED"] },
+        status: "CONFIRMED",
       },
       include: {
         submitter: {
