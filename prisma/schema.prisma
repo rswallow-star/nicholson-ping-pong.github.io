@@ -1,0 +1,142 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  PLAYER
+  ADMIN
+}
+
+enum MatchStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  EXPIRED
+  DISPUTED
+}
+
+enum DisputeStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+model User {
+  id              String          @id @default(uuid())
+  email           String          @unique
+  passwordHash    String
+  displayName     String          @unique
+  roomNumber      String?
+  avatarUrl       String?
+  role            Role            @default(PLAYER)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  rating          Rating?
+  matchesAsP1     Match[]         @relation("Player1Matches")
+  matchesAsP2     Match[]         @relation("Player2Matches")
+  ratingHistory   RatingHistory[]
+  disputesFiled   Dispute[]       @relation("ReporterDisputes")
+  disputesHandled Dispute[]       @relation("AdminDisputes")
+  auditLogs       AuditLog[]
+
+  @@index([email])
+  @@index([displayName])
+}
+
+model Rating {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentElo    Float     @default(1200.0)
+  peakElo       Float     @default(1200.0)
+  matchesPlayed Int       @default(0)
+  wins          Int       @default(0)
+  losses        Int       @default(0)
+  currentStreak Int       @default(0) // Positive for win streak, negative for loss streak
+  lastMatchAt   DateTime?
+  updatedAt     DateTime  @updatedAt
+
+  @@index([currentElo(sort: Desc)])
+}
+
+model Match {
+  id                 String       @id @default(uuid())
+  submitterId        String
+  submitter          User         @relation("Player1Matches", fields: [submitterId], references: [id])
+  opponentId         String
+  opponent           User         @relation("Player2Matches", fields: [opponentId], references: [id])
+  
+  submitterScore     Int
+  opponentScore      Int
+  status             MatchStatus  @default(PENDING)
+  notes              String?      @db.VarChar(255)
+
+  // Snapshots populated ONLY upon CONFIRMED status
+  submitterEloBefore Float?
+  submitterEloAfter  Float?
+  opponentEloBefore  Float?
+  opponentEloAfter   Float?
+
+  expiresAt          DateTime
+  confirmedAt        DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  ratingHistories    RatingHistory[]
+  dispute            Dispute?
+
+  @@index([submitterId, status])
+  @@index([opponentId, status])
+  @@index([createdAt(sort: Desc)])
+}
+
+model RatingHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matchId   String
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  eloBefore Float
+  eloAfter  Float
+  delta     Float
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model Dispute {
+  id           String        @id @default(uuid())
+  matchId      String        @unique
+  match        Match         @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  reporterId   String
+  reporter     User          @relation("ReporterDisputes", fields: [reporterId], references: [id])
+  reason       String        @db.Text
+  status       DisputeStatus @default(OPEN)
+  adminNotes   String?       @db.Text
+  resolvedById String?
+  resolvedBy   User?         @relation("AdminDisputes", fields: [resolvedById], references: [id])
+  resolvedAt   DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([status])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String
+  actor     User     @relation(fields: [actorId], references: [id])
+  action    String
+  metadata  Json
+  createdAt DateTime @default(now())
+
+  @@index([actorId, createdAt(sort: Desc)])
+}

@@ -8,8 +8,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
+    "db:seed": "tsx scripts/seed.ts",
     "test:elo": "tsx scripts/test-elo.ts"
   },
   "dependencies": {
