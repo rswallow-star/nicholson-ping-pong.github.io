@@ -1,6 +1,7 @@
 /**
  * ELO Calculation Engine for Nicholson Dorm Ping-Pong League
- * Includes dynamic K-factor schedules, provisional ratings, and asymmetric updates.
+ * Includes dynamic K-factors, provisional tiers, Margin-of-Victory (MOV) scaling,
+ * and game-length weighting (Games to 21 weighted higher than games to 11).
  */
 
 export interface EloCalculationInput {
@@ -13,6 +14,8 @@ export interface EloCalculationInput {
   playerBRating: number;
   playerBMatchesCount: number;
   playerBScore: number;
+
+  gameType?: 11 | 21;
 }
 
 export interface EloCalculationResult {
@@ -22,6 +25,8 @@ export interface EloCalculationResult {
   playerBDelta: number;
   playerAExpected: number;
   playerBExpected: number;
+  movMultiplier: number;
+  gameTypeWeight: number;
 }
 
 /**
@@ -47,12 +52,50 @@ export function getExpectedScore(ratingA: number, ratingB: number): number {
 }
 
 /**
+ * Calculates Margin of Victory (MOV) multiplier scaled proportionally to game length.
+ * - Deuce / Minimum 2-point margin: 1.00x baseline
+ * - Proportional blowout: scaled based on whether target was 11 or 21 points
+ */
+export function getMarginOfVictoryMultiplier(
+  winnerScore: number,
+  loserScore: number,
+  winnerRating: number,
+  loserRating: number,
+  gameType: 11 | 21 = 21
+): number {
+  const diff = Math.max(2, winnerScore - loserScore);
+
+  // Normalize point spread divisor: 6.0 for 11-point games, 10.0 for 21-point games
+  const divisor = gameType === 11 ? 6.0 : 10.0;
+  const baseMov = 1.0 + Math.log(1.0 + (diff - 2) / divisor) * 0.7;
+
+  // Rating expectation dampener (FiveThirtyEight methodology adapted for table tennis)
+  const eloDiff = winnerRating - loserRating;
+  let dampener: number;
+
+  if (eloDiff > 0) {
+    // Favorite won: If a 1800 champion blows out a 1100 player, it was expected
+    dampener = 2.2 / (eloDiff * 0.0015 + 2.2);
+  } else {
+    // Underdog won: If an underdog blows out a champion, give full credit + bonus
+    dampener = 1.0 + Math.min(0.25, Math.abs(eloDiff) * 0.0005);
+  }
+
+  const multiplier = baseMov * dampener;
+  return Math.round(Math.max(0.8, Math.min(2.0, multiplier)) * 100) / 100;
+}
+
+/**
  * Validates ping-pong score syntax according to standard rules:
- * - Must be played to at least 11 or 21 points
+ * - Must be played to at least gameType (11 or 21)
  * - Must win by at least 2 points
  * - No draws allowed
  */
-export function validatePingPongScore(scoreA: number, scoreB: number, gameType: 11 | 21 = 21): { valid: boolean; error?: string } {
+export function validatePingPongScore(
+  scoreA: number,
+  scoreB: number,
+  gameType: 11 | 21 = 21
+): { valid: boolean; error?: string } {
   if (!Number.isInteger(scoreA) || !Number.isInteger(scoreB)) {
     return { valid: false, error: "Scores must be integer numbers." };
   }
@@ -86,7 +129,9 @@ export function validatePingPongScore(scoreA: number, scoreB: number, gameType: 
 }
 
 /**
- * Computes post-match ELO ratings for both players.
+ * Computes post-match ELO ratings with Margin-of-Victory and Game Length weighting.
+ * - Full Match (Game to 21): Weighted at 1.10x (higher stamina, lower random variance)
+ * - Quick Match (Game to 11): Weighted at 0.85x (faster, higher variance)
  */
 export function calculateElo(input: EloCalculationInput): EloCalculationResult {
   const {
@@ -96,6 +141,7 @@ export function calculateElo(input: EloCalculationInput): EloCalculationResult {
     playerBRating,
     playerBMatchesCount,
     playerBScore,
+    gameType = 21,
   } = input;
 
   if (playerAScore === playerBScore) {
@@ -112,9 +158,20 @@ export function calculateElo(input: EloCalculationInput): EloCalculationResult {
   const kA = getKFactor(playerAMatchesCount, playerARating);
   const kB = getKFactor(playerBMatchesCount, playerBRating);
 
-  // Raw rating deltas
-  const rawDeltaA = kA * (actualScoreA - expectedA);
-  const rawDeltaB = kB * (actualScoreB - expectedB);
+  // Compute Margin of Victory Multiplier
+  const winnerScore = isPlayerAWinner ? playerAScore : playerBScore;
+  const loserScore = isPlayerAWinner ? playerBScore : playerAScore;
+  const winnerRating = isPlayerAWinner ? playerARating : playerBRating;
+  const loserRating = isPlayerAWinner ? playerBRating : playerARating;
+
+  const mov = getMarginOfVictoryMultiplier(winnerScore, loserScore, winnerRating, loserRating, gameType);
+
+  // Game Type Weighting: Games to 21 are weighted ~30% higher than games to 11
+  const gameTypeWeight = gameType === 21 ? 1.10 : 0.85;
+
+  // Scaled deltas with both MOV and Game-Length weights
+  const rawDeltaA = kA * (actualScoreA - expectedA) * mov * gameTypeWeight;
+  const rawDeltaB = kB * (actualScoreB - expectedB) * mov * gameTypeWeight;
 
   // Round to 1 decimal place for clean dorm display
   const deltaA = Math.round(rawDeltaA * 10) / 10;
@@ -131,5 +188,7 @@ export function calculateElo(input: EloCalculationInput): EloCalculationResult {
     playerBDelta: Math.round((newRatingB - playerBRating) * 10) / 10,
     playerAExpected: Math.round(expectedA * 1000) / 1000,
     playerBExpected: Math.round(expectedB * 1000) / 1000,
+    movMultiplier: mov,
+    gameTypeWeight,
   };
 }

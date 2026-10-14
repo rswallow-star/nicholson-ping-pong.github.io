@@ -33,7 +33,13 @@ export async function POST(
         throw new Error("One or both player rating records could not be found.");
       }
 
-      // Calculate post-match ELO
+      // Determine game type (11 or 21) from notes tag or score threshold
+      const isGameTo11 =
+        (match.notes && match.notes.includes("[Game to 11]")) ||
+        Math.max(match.submitterScore, match.opponentScore) <= 14;
+      const gameType: 11 | 21 = isGameTo11 ? 11 : 21;
+
+      // Calculate post-match ELO with game-length weighting
       const eloResult = calculateElo({
         playerAId: match.submitterId,
         playerARating: submitterRating.currentElo,
@@ -44,6 +50,8 @@ export async function POST(
         playerBRating: opponentRating.currentElo,
         playerBMatchesCount: opponentRating.matchesPlayed,
         playerBScore: match.opponentScore,
+
+        gameType,
       });
 
       const isSubmitterWinner = match.submitterScore > match.opponentScore;

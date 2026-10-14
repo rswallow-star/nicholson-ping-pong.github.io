@@ -5,7 +5,7 @@ import { validatePingPongScore } from "@/lib/elo";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { submitterId, opponentId, submitterScore, opponentScore, notes } = body;
+    const { submitterId, opponentId, submitterScore, opponentScore, notes, gameType = 21 } = body;
 
     if (!submitterId || !opponentId) {
       return NextResponse.json({ error: "Both players are required." }, { status: 400 });
@@ -17,21 +17,22 @@ export async function POST(req: Request) {
 
     const sScore = parseInt(submitterScore, 10);
     const oScore = parseInt(opponentScore, 10);
+    const targetGameType: 11 | 21 = Number(gameType) === 11 ? 11 : 21;
 
-    const validation = validatePingPongScore(sScore, oScore, 21);
+    const validation = validatePingPongScore(sScore, oScore, targetGameType);
     if (!validation.valid) {
-      // Also try 11-point game validation if 21 fails
-      const validation11 = validatePingPongScore(sScore, oScore, 11);
-      if (!validation11.valid) {
-        return NextResponse.json(
-          { error: validation.error || "Invalid score." },
-          { status: 400 }
-        );
-      }
+      return NextResponse.json(
+        { error: validation.error || `Invalid score for a game to ${targetGameType}.` },
+        { status: 400 }
+      );
     }
 
     // Set 48-hour expiration
     const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+
+    // Format notes with Game Type tag so it shows clearly in confirmation feeds
+    const gameTag = `[Game to ${targetGameType}]`;
+    const formattedNotes = notes && notes.trim() ? `${gameTag} ${notes.trim()}` : gameTag;
 
     const match = await prisma.match.create({
       data: {
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
         opponentId,
         submitterScore: sScore,
         opponentScore: oScore,
-        notes: notes ? notes.trim() : null,
+        notes: formattedNotes,
         status: "PENDING",
         expiresAt,
       },
@@ -50,7 +51,10 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(
-      { message: "Match submitted successfully! Awaiting opponent confirmation.", match },
+      {
+        message: `Match (Game to ${targetGameType}) submitted successfully! Awaiting opponent confirmation.`,
+        match,
+      },
       { status: 201 }
     );
   } catch (error) {

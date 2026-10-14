@@ -14,6 +14,7 @@ import {
   ShieldAlert,
   Search,
   RefreshCw,
+  Zap,
 } from "lucide-react";
 
 interface Player {
@@ -56,6 +57,7 @@ export default function HomePage() {
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
 
   // Match Form State
+  const [gameType, setGameType] = useState<11 | 21>(21);
   const [submitterId, setSubmitterId] = useState("");
   const [opponentId, setOpponentId] = useState("");
   const [submitterScore, setSubmitterScore] = useState("21");
@@ -88,6 +90,17 @@ export default function HomePage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const handleToggleGameType = (type: 11 | 21) => {
+    setGameType(type);
+    if (type === 11) {
+      setSubmitterScore("11");
+      setOpponentScore("9");
+    } else {
+      setSubmitterScore("21");
+      setOpponentScore("18");
+    }
+  };
 
   const handleSeed = async () => {
     setActionLoading("seed");
@@ -197,6 +210,7 @@ export default function HomePage() {
           submitterScore,
           opponentScore,
           notes,
+          gameType,
         }),
       });
 
@@ -290,55 +304,74 @@ export default function HomePage() {
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {pendingMatches.map((m) => (
-                <div
-                  key={m.id}
-                  className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-                      <span>Submitted by <strong className="text-white">{m.submitter.displayName}</strong></span>
-                      <span className="bg-amber-400/10 text-amber-400 px-2 py-0.5 rounded font-mono font-bold">PENDING</span>
+              {pendingMatches.map((m) => {
+                const isGameTo11 =
+                  (m.notes && m.notes.includes("[Game to 11]")) ||
+                  Math.max(m.submitterScore, m.opponentScore) <= 14;
+
+                return (
+                  <div
+                    key={m.id}
+                    className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
+                        <span className="flex items-center gap-2">
+                          Submitted by <strong className="text-white">{m.submitter.displayName}</strong>
+                          <span
+                            className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
+                              isGameTo11
+                                ? "bg-sky-500/10 text-sky-400 border border-sky-500/20"
+                                : "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                            }`}
+                          >
+                            {isGameTo11 ? "⚡ Game to 11" : "🏆 Game to 21 (x1.1 ELO)"}
+                          </span>
+                        </span>
+                        <span className="bg-amber-400/10 text-amber-400 px-2 py-0.5 rounded font-mono font-bold">
+                          PENDING
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-2 border-y border-slate-800/60 my-2">
+                        <div>
+                          <div className="text-sm font-bold text-white">{m.submitter.displayName}</div>
+                          <div className="text-xs text-slate-500">Room {m.submitter.roomNumber || "N/A"}</div>
+                        </div>
+                        <div className="text-2xl font-black font-mono text-emerald-400">
+                          {m.submitterScore} – {m.opponentScore}
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-bold text-white">{m.opponent.displayName}</div>
+                          <div className="text-xs text-slate-500">Room {m.opponent.roomNumber || "N/A"}</div>
+                        </div>
+                      </div>
+
+                      {m.notes && (
+                        <p className="text-xs text-slate-400 italic mb-3">"{m.notes}"</p>
+                      )}
                     </div>
 
-                    <div className="flex items-center justify-between py-2 border-y border-slate-800/60 my-2">
-                      <div>
-                        <div className="text-sm font-bold text-white">{m.submitter.displayName}</div>
-                        <div className="text-xs text-slate-500">Room {m.submitter.roomNumber || "N/A"}</div>
-                      </div>
-                      <div className="text-2xl font-black font-mono text-emerald-400">
-                        {m.submitterScore} – {m.opponentScore}
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-bold text-white">{m.opponent.displayName}</div>
-                        <div className="text-xs text-slate-500">Room {m.opponent.roomNumber || "N/A"}</div>
-                      </div>
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={() => handleConfirmMatch(m.id)}
+                        disabled={actionLoading === m.id}
+                        className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs py-2 rounded-lg transition"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        {actionLoading === m.id ? "Recalculating..." : "Accept & Update ELO"}
+                      </button>
+                      <button
+                        onClick={() => handleRejectMatch(m.id)}
+                        disabled={actionLoading === m.id}
+                        className="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-rose-900/50 text-slate-300 hover:text-rose-200 text-xs px-3 py-2 rounded-lg border border-slate-700 transition"
+                      >
+                        <XCircle className="w-4 h-4" /> Reject
+                      </button>
                     </div>
-
-                    {m.notes && (
-                      <p className="text-xs text-slate-400 italic mb-3">"{m.notes}"</p>
-                    )}
                   </div>
-
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      onClick={() => handleConfirmMatch(m.id)}
-                      disabled={actionLoading === m.id}
-                      className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs py-2 rounded-lg transition"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      {actionLoading === m.id ? "Recalculating..." : "Accept & Update ELO"}
-                    </button>
-                    <button
-                      onClick={() => handleRejectMatch(m.id)}
-                      disabled={actionLoading === m.id}
-                      className="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-rose-900/50 text-slate-300 hover:text-rose-200 text-xs px-3 py-2 rounded-lg border border-slate-700 transition"
-                    >
-                      <XCircle className="w-4 h-4" /> Reject
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         )}
@@ -630,7 +663,7 @@ export default function HomePage() {
       {showLogModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
-            <div className="flex justify-between items-center mb-5">
+            <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <Swords className="w-5 h-5 text-emerald-400" /> Log Ping-Pong Match
               </h2>
@@ -640,6 +673,49 @@ export default function HomePage() {
               >
                 ✕
               </button>
+            </div>
+
+            {/* Game Type Selection Tabs */}
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Match Format
+              </label>
+              <div className="grid grid-cols-2 gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => handleToggleGameType(21)}
+                  className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition ${
+                    gameType === 21
+                      ? "bg-purple-600 text-white shadow-md shadow-purple-600/30"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <Trophy className="w-3.5 h-3.5" /> Full Game (to 21)
+                  <span className="text-[10px] bg-purple-950 px-1 py-0.2 rounded text-purple-200">
+                    1.1x ELO
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleToggleGameType(11)}
+                  className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition ${
+                    gameType === 11
+                      ? "bg-sky-600 text-white shadow-md shadow-sky-600/30"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <Zap className="w-3.5 h-3.5" /> Quick Game (to 11)
+                  <span className="text-[10px] bg-sky-950 px-1 py-0.2 rounded text-sky-200">
+                    0.85x ELO
+                  </span>
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1.5">
+                {gameType === 21
+                  ? "🏆 Full matches to 21 have +30% higher ELO weight due to lower luck variance and higher stamina."
+                  : "⚡ Quick matches to 11 are faster with slightly reduced ELO stakes."}
+              </p>
             </div>
 
             {formError && (
@@ -722,7 +798,7 @@ export default function HomePage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Crazy deuce rally!"
+                  placeholder="e.g. Great rally at deuce!"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
