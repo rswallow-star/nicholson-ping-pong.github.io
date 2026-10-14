@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Zap,
 } from "lucide-react";
+import { PlayerStatsModal } from "@/components/PlayerStatsModal";
 
 interface Player {
   id: string;
@@ -55,6 +56,7 @@ export default function HomePage() {
   // Modals
   const [showLogModal, setShowLogModal] = useState(false);
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
   // Match Form State
   const [gameType, setGameType] = useState<11 | 21>(21);
@@ -476,8 +478,14 @@ export default function HomePage() {
                           )}
                         </td>
                         <td className="py-3.5 px-4">
-                          <div className="font-semibold text-white flex items-center gap-2">
-                            {player.displayName}
+                          <button
+                            onClick={() => setSelectedPlayerId(player.id)}
+                            className="font-semibold text-white hover:text-emerald-400 flex items-center gap-2 group transition text-left cursor-pointer"
+                            title="Click to view full player stats & ELO graph"
+                          >
+                            <span className="group-hover:underline underline-offset-2">
+                              {player.displayName}
+                            </span>
                             {isProvisional && (
                               <span
                                 title="Under 10 matches played (Dynamic K=48)"
@@ -486,7 +494,7 @@ export default function HomePage() {
                                 PROVISIONAL
                               </span>
                             )}
-                          </div>
+                          </button>
                         </td>
                         <td className="py-3.5 px-4 text-slate-400 font-mono text-xs">
                           {player.roomNumber ? `Rm ${player.roomNumber}` : "—"}
@@ -820,6 +828,14 @@ export default function HomePage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Player Stats Pop-up Modal */}
+      {selectedPlayerId && (
+        <PlayerStatsModal
+          playerId={selectedPlayerId}
+          onClose={() => setSelectedPlayerId(null)}
+        />
       )}
     </div>
   );
