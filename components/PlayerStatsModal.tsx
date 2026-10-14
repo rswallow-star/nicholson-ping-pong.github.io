@@ -137,67 +137,79 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
             </div>
 
             {/* Quick KPI Stat Cards (4-Grid) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-3.5 flex flex-col justify-between">
-                <div className="flex items-center justify-between text-slate-400 mb-1">
-                  <span className="text-xs font-medium">Win Rate</span>
-                  <Target className="w-4 h-4 text-emerald-400" />
-                </div>
-                <div className="text-xl font-black font-mono text-white">
-                  {data.player.winRate}%
-                </div>
-                <div className="text-[11px] text-slate-500 font-mono">
-                  {data.player.wins}W – {data.player.losses}L ({data.player.matchesPlayed} total)
-                </div>
-              </div>
+            {(() => {
+              const g21Total = data.analytics.gamesTo21.wins + data.analytics.gamesTo21.losses;
+              const g21Pct = g21Total > 0 ? Math.round((data.analytics.gamesTo21.wins / g21Total) * 100) : 0;
 
-              <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-3.5 flex flex-col justify-between">
-                <div className="flex items-center justify-between text-slate-400 mb-1">
-                  <span className="text-xs font-medium">Streak</span>
-                  <Flame className="w-4 h-4 text-amber-400" />
-                </div>
-                <div className="text-xl font-black font-mono text-white">
-                  {data.player.currentStreak > 0 ? (
-                    <span className="text-amber-400">{data.player.currentStreak}W 🔥</span>
-                  ) : data.player.currentStreak < 0 ? (
-                    <span className="text-slate-400">{Math.abs(data.player.currentStreak)}L ❄️</span>
-                  ) : (
-                    <span className="text-slate-500">—</span>
-                  )}
-                </div>
-                <div className="text-[11px] text-slate-500">
-                  {data.player.currentStreak > 0 ? "Active Win Streak" : "Current Form"}
-                </div>
-              </div>
+              const g11Total = data.analytics.gamesTo11.wins + data.analytics.gamesTo11.losses;
+              const g11Pct = g11Total > 0 ? Math.round((data.analytics.gamesTo11.wins / g11Total) * 100) : 0;
 
-              <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-3.5 flex flex-col justify-between">
-                <div className="flex items-center justify-between text-slate-400 mb-1">
-                  <span className="text-xs font-medium">Full Match (21)</span>
-                  <Trophy className="w-4 h-4 text-purple-400" />
-                </div>
-                <div className="text-xl font-black font-mono text-purple-300">
-                  {data.analytics.gamesTo21.wins}W – {data.analytics.gamesTo21.losses}L
-                </div>
-                <div className="text-[11px] text-slate-500">
-                  Quick (11): {data.analytics.gamesTo11.wins}W – {data.analytics.gamesTo11.losses}L
-                </div>
-              </div>
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {/* Card 1: Overall Record */}
+                  <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-3.5 flex flex-col justify-between">
+                    <div className="flex items-center justify-between text-slate-400 mb-1">
+                      <span className="text-xs font-medium">Overall Record</span>
+                      <Target className="w-4 h-4 text-emerald-400" />
+                    </div>
+                    <div className="text-xl font-black font-mono text-white">
+                      {data.player.wins}W – {data.player.losses}L
+                    </div>
+                    <div className="text-[11px] text-slate-400 font-mono">
+                      <strong className="text-emerald-400">{data.player.winRate}%</strong> Win Rate ({data.player.matchesPlayed} games)
+                    </div>
+                  </div>
 
-              <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-3.5 flex flex-col justify-between">
-                <div className="flex items-center justify-between text-slate-400 mb-1">
-                  <span className="text-xs font-medium">Avg Points</span>
-                  <Award className="w-4 h-4 text-sky-400" />
+                  {/* Card 2: Streak */}
+                  <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-3.5 flex flex-col justify-between">
+                    <div className="flex items-center justify-between text-slate-400 mb-1">
+                      <span className="text-xs font-medium">Streak</span>
+                      <Flame className="w-4 h-4 text-amber-400" />
+                    </div>
+                    <div className="text-xl font-black font-mono text-white">
+                      {data.player.currentStreak > 0 ? (
+                        <span className="text-amber-400">{data.player.currentStreak}W 🔥</span>
+                      ) : data.player.currentStreak < 0 ? (
+                        <span className="text-slate-400">{Math.abs(data.player.currentStreak)}L ❄️</span>
+                      ) : (
+                        <span className="text-slate-500">—</span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      {data.player.currentStreak > 0 ? "Active Win Streak" : "Current Form"}
+                    </div>
+                  </div>
+
+                  {/* Card 3: Games to 21 */}
+                  <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-3.5 flex flex-col justify-between">
+                    <div className="flex items-center justify-between text-slate-400 mb-1">
+                      <span className="text-xs font-medium">Games to 21</span>
+                      <Trophy className="w-4 h-4 text-purple-400" />
+                    </div>
+                    <div className="text-xl font-black font-mono text-purple-300">
+                      {data.analytics.gamesTo21.wins}W – {data.analytics.gamesTo21.losses}L
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      {g21Pct}% Win Rate ({g21Total} matches)
+                    </div>
+                  </div>
+
+                  {/* Card 4: Games to 11 */}
+                  <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-3.5 flex flex-col justify-between">
+                    <div className="flex items-center justify-between text-slate-400 mb-1">
+                      <span className="text-xs font-medium">Games to 11</span>
+                      <Zap className="w-4 h-4 text-sky-400" />
+                    </div>
+                    <div className="text-xl font-black font-mono text-sky-300">
+                      {data.analytics.gamesTo11.wins}W – {data.analytics.gamesTo11.losses}L
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      {g11Pct}% Win Rate ({g11Total} matches)
+                    </div>
+                  </div>
                 </div>
-                <div className="text-xl font-black font-mono text-sky-300">
-                  {data.analytics.avgPointsScored}
-                </div>
-                <div className="text-[11px] text-slate-500 truncate">
-                  {data.analytics.highestEloDefeated
-                    ? `Best Win: ${data.analytics.highestEloDefeated.name}`
-                    : "Points per match"}
-                </div>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Interactive ELO Progression Graph */}
             <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4">
