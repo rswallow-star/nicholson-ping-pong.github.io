@@ -17,6 +17,7 @@ import {
   Zap,
 } from "lucide-react";
 import { PlayerStatsModal } from "@/components/PlayerStatsModal";
+import { CompareModal } from "@/components/CompareModal";
 
 interface Player {
   id: string;
@@ -56,6 +57,7 @@ export default function HomePage() {
   // Modals
   const [showLogModal, setShowLogModal] = useState(false);
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
+  const [showCompareModal, setShowCompareModal] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
   // Match Form State
@@ -255,6 +257,13 @@ export default function HomePage() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setShowCompareModal(true)}
+              className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-xs sm:text-sm px-3.5 py-2 rounded-lg border border-slate-700 transition"
+            >
+              <Swords className="w-4 h-4 text-purple-400" /> Compare
+            </button>
+
             <button
               onClick={() => setShowAddPlayerModal(true)}
               className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-xs sm:text-sm px-3.5 py-2 rounded-lg border border-slate-700 transition"
@@ -835,6 +844,14 @@ export default function HomePage() {
         <PlayerStatsModal
           playerId={selectedPlayerId}
           onClose={() => setSelectedPlayerId(null)}
+        />
+      )}
+
+      {/* Head-to-Head Compare Modal */}
+      {showCompareModal && (
+        <CompareModal
+          players={players}
+          onClose={() => setShowCompareModal(false)}
         />
       )}
     </div>
