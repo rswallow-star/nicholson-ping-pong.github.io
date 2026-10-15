@@ -178,3 +178,75 @@ export async function GET(
     );
   }
 }
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id } = params;
+    const body = await req.json();
+    const { displayName, roomNumber } = body;
+
+    if (!displayName || !displayName.trim()) {
+      return NextResponse.json({ error: "Player name is required." }, { status: 400 });
+    }
+
+    const trimmedName = displayName.trim();
+
+    // Check for duplicate name
+    const existing = await prisma.user.findFirst({
+      where: {
+        id: { not: id },
+        displayName: { equals: trimmedName, mode: "insensitive" },
+      },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { error: `Another player already has the name "${trimmedName}".` },
+        { status: 400 }
+      );
+    }
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: {
+        displayName: trimmedName,
+        roomNumber: roomNumber ? roomNumber.trim() : null,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Player updated successfully!",
+      user: updated,
+    });
+  } catch (error: any) {
+    console.error("Error updating player:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to update player." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id } = params;
+    await prisma.user.delete({ where: { id } });
+    return NextResponse.json({
+      success: true,
+      message: "Player deleted successfully.",
+    });
+  } catch (error: any) {
+    console.error("Error deleting player:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to delete player." },
+      { status: 500 }
+    );
+  }
+}

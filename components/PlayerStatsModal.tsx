@@ -13,6 +13,9 @@ import {
   Swords,
   ChevronRight,
   ShieldCheck,
+  Pencil,
+  Trash2,
+  Check,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -27,6 +30,7 @@ import {
 interface PlayerStatsModalProps {
   playerId: string;
   onClose: () => void;
+  onPlayerUpdated?: () => void;
 }
 
 type RangeToggle = "5" | "10" | "20" | "50" | "all";
@@ -34,11 +38,19 @@ type RangeToggle = "5" | "10" | "20" | "50" | "all";
 export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
   playerId,
   onClose,
+  onPlayerUpdated,
 }) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedRange, setSelectedRange] = useState<RangeToggle>("all");
+
+  // Edit State
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editRoom, setEditRoom] = useState("");
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [editError, setEditError] = useState("");
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -79,6 +91,65 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
   const minElo = eloValues.length > 0 ? Math.floor(Math.min(...eloValues) - 25) : 1100;
   const maxElo = eloValues.length > 0 ? Math.ceil(Math.max(...eloValues) + 25) : 1300;
 
+  const handleSaveEdit = async () => {
+    if (!editName.trim()) {
+      setEditError("Player name cannot be empty.");
+      return;
+    }
+    setSaveLoading(true);
+    setEditError("");
+    try {
+      const res = await fetch(`/api/players/${playerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: editName.trim(),
+          roomNumber: editRoom.trim() || null,
+        }),
+      });
+      const resJson = await res.json();
+      if (!res.ok) {
+        throw new Error(resJson.error || "Failed to update player.");
+      }
+      setData((prev: any) => ({
+        ...prev,
+        player: {
+          ...prev.player,
+          displayName: editName.trim(),
+          roomNumber: editRoom.trim() || null,
+        },
+      }));
+      setIsEditing(false);
+      if (onPlayerUpdated) onPlayerUpdated();
+    } catch (err: any) {
+      setEditError(err.message || "Failed to update.");
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  const handleDeletePlayer = async () => {
+    if (
+      !confirm(
+        `Are you sure you want to delete ${data.player.displayName}? This will also remove their match records and cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/players/${playerId}`, { method: "DELETE" });
+      if (res.ok) {
+        if (onPlayerUpdated) onPlayerUpdated();
+        onClose();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to delete player.");
+      }
+    } catch (err) {
+      alert("Error deleting player.");
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
       <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl relative max-h-[92vh] flex flex-col my-auto">
@@ -108,16 +179,79 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                   <span className="text-xs font-mono font-bold bg-amber-400/10 text-amber-400 border border-amber-400/20 px-2 py-0.5 rounded-full flex items-center gap-1">
                     <Trophy className="w-3 h-3" /> Dorm Rank #{data.player.rank}
                   </span>
-                  {data.player.roomNumber && (
+                  {data.player.roomNumber && !isEditing && (
                     <span className="text-xs text-slate-400 font-mono bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700">
                       Room {data.player.roomNumber}
                     </span>
                   )}
                 </div>
-                <h2 className="text-2xl font-black text-white tracking-tight">
-                  {data.player.displayName}
-                </h2>
-                <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+
+                {isEditing ? (
+                  <div className="space-y-2 mt-2">
+                    <div className="flex flex-wrap gap-2">
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder="Player Name"
+                        className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-bold text-white focus:outline-none focus:border-emerald-500"
+                        autoFocus
+                      />
+                      <input
+                        type="text"
+                        value={editRoom}
+                        onChange={(e) => setEditRoom(e.target.value)}
+                        placeholder="Room (e.g. 304B)"
+                        className="w-28 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                    {editError && (
+                      <p className="text-xs text-rose-400 font-medium">{editError}</p>
+                    )}
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={handleSaveEdit}
+                        disabled={saveLoading}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1 rounded-md transition flex items-center gap-1 shadow-md shadow-emerald-600/30"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        {saveLoading ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        onClick={() => setIsEditing(false)}
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-2.5 py-1 rounded-md transition border border-slate-700"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleDeletePlayer}
+                        className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 ml-3 hover:underline"
+                        title="Delete this player from the database"
+                      >
+                        <Trash2 className="w-3 h-3" /> Delete
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2.5">
+                    <h2 className="text-2xl font-black text-white tracking-tight">
+                      {data.player.displayName}
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setEditName(data.player.displayName);
+                        setEditRoom(data.player.roomNumber || "");
+                        setIsEditing(true);
+                      }}
+                      className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border border-slate-700/60 transition"
+                      title="Edit player name or room number"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-1">
                   <Calendar className="w-3.5 h-3.5 text-slate-500" />
                   Resident registered on {new Date(data.player.registeredAt).toLocaleDateString()}
                 </p>

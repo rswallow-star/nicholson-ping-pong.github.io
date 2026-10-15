@@ -844,6 +844,7 @@ export default function HomePage() {
         <PlayerStatsModal
           playerId={selectedPlayerId}
           onClose={() => setSelectedPlayerId(null)}
+          onPlayerUpdated={fetchData}
         />
       )}
 
