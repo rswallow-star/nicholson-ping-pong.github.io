@@ -264,8 +264,14 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                 <div className="text-3xl font-black font-mono text-emerald-400">
                   {data.player.currentElo.toFixed(1)}
                 </div>
-                <div className="text-[11px] text-slate-500 font-mono">
-                  Peak: <strong className="text-slate-300">{data.player.peakElo.toFixed(1)}</strong>
+                <div className="text-[11px] text-slate-400 font-mono space-y-0.5">
+                  <div>
+                    Peak: <strong className="text-slate-300">{data.player.peakElo.toFixed(1)}</strong>
+                  </div>
+                  <div className="text-amber-400/90 flex items-center justify-end gap-1">
+                    <span>Best Streak:</span>
+                    <strong className="text-amber-300">{data.player.highestWinStreak ?? 0}W 🔥</strong>
+                  </div>
                 </div>
               </div>
             </div>
@@ -309,8 +315,11 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                         <span className="text-slate-500">—</span>
                       )}
                     </div>
-                    <div className="text-[11px] text-slate-400">
-                      {data.player.currentStreak > 0 ? "Active Win Streak" : "Current Form"}
+                    <div className="text-[11px] text-slate-400 flex items-center justify-between font-mono">
+                      <span>{data.player.currentStreak > 0 ? "Active" : "Current"}</span>
+                      <span className="text-amber-400 font-bold">
+                        Peak: {data.player.highestWinStreak ?? 0}W 🔥
+                      </span>
                     </div>
                   </div>
 
