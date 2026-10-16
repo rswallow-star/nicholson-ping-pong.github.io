@@ -65,6 +65,10 @@ export async function GET(
     let gamesTo21Losses = 0;
     let totalPointsScored = 0;
     let totalPointsConceded = 0;
+    let points21Scored = 0;
+    let points21Conceded = 0;
+    let points11Scored = 0;
+    let points11Conceded = 0;
     let highestEloDefeated: { name: string; elo: number } | null = null;
 
     const gameLogs = confirmedMatches.map((m) => {
@@ -82,9 +86,13 @@ export async function GET(
       if (is11) {
         if (isWin) gamesTo11Wins++;
         else gamesTo11Losses++;
+        points11Scored += myScore;
+        points11Conceded += theirScore;
       } else {
         if (isWin) gamesTo21Wins++;
         else gamesTo21Losses++;
+        points21Scored += myScore;
+        points21Conceded += theirScore;
       }
 
       totalPointsScored += myScore;
@@ -182,6 +190,18 @@ export async function GET(
     const avgPointsConceded =
       totalGames > 0 ? (totalPointsConceded / totalGames).toFixed(1) : "0.0";
 
+    const matches21 = gamesTo21Wins + gamesTo21Losses;
+    const matches11 = gamesTo11Wins + gamesTo11Losses;
+
+    const avgPoints21Scored =
+      matches21 > 0 ? (points21Scored / matches21).toFixed(1) : "0.0";
+    const avgPoints21Conceded =
+      matches21 > 0 ? (points21Conceded / matches21).toFixed(1) : "0.0";
+    const avgPoints11Scored =
+      matches11 > 0 ? (points11Scored / matches11).toFixed(1) : "0.0";
+    const avgPoints11Conceded =
+      matches11 > 0 ? (points11Conceded / matches11).toFixed(1) : "0.0";
+
     return NextResponse.json({
       player: {
         id: user.id,
@@ -202,16 +222,56 @@ export async function GET(
         pointDifferential,
         avgPointsScored,
         avgPointsConceded,
+        avgPoints21Scored,
+        avgPoints21Conceded,
+        avgPoints11Scored,
+        avgPoints11Conceded,
+        points21: {
+          scored: points21Scored,
+          conceded: points21Conceded,
+          diff: points21Scored - points21Conceded,
+          avgScored: avgPoints21Scored,
+          avgConceded: avgPoints21Conceded,
+          matches: matches21,
+        },
+        points11: {
+          scored: points11Scored,
+          conceded: points11Conceded,
+          diff: points11Scored - points11Conceded,
+          avgScored: avgPoints11Scored,
+          avgConceded: avgPoints11Conceded,
+          matches: matches11,
+        },
         registeredAt: user.createdAt,
       },
       analytics: {
-        gamesTo21: { wins: gamesTo21Wins, losses: gamesTo21Losses },
-        gamesTo11: { wins: gamesTo11Wins, losses: gamesTo11Losses },
+        gamesTo21: {
+          wins: gamesTo21Wins,
+          losses: gamesTo21Losses,
+          pointsScored: points21Scored,
+          pointsConceded: points21Conceded,
+          pointDiff: points21Scored - points21Conceded,
+          avgPointsScored: avgPoints21Scored,
+          avgPointsConceded: avgPoints21Conceded,
+        },
+        gamesTo11: {
+          wins: gamesTo11Wins,
+          losses: gamesTo11Losses,
+          pointsScored: points11Scored,
+          pointsConceded: points11Conceded,
+          pointDiff: points11Scored - points11Conceded,
+          avgPointsScored: avgPoints11Scored,
+          avgPointsConceded: avgPoints11Conceded,
+        },
         totalPointsFor: totalPointsScored,
         totalPointsAgainst: totalPointsConceded,
         pointDifferential,
         avgPointsScored,
         avgPointsConceded,
+        avgPoints21Scored,
+        avgPoints21Conceded,
+        avgPoints11Scored,
+        avgPoints11Conceded,
         highestEloDefeated,
         highestWinStreak,
         peakWinStreak: highestWinStreak,
