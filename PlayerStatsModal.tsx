@@ -150,6 +150,43 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
     }
   };
 
+  // Accurately compute the player's peak all-time win streak:
+  // Combines backend calculations, active streak, and chronological replay of all confirmed matches
+  const getAccuratePeakStreak = (): number => {
+    if (!data) return 0;
+    let max = 0;
+    if (typeof data.player?.highestWinStreak === "number") {
+      max = Math.max(max, data.player.highestWinStreak);
+    }
+    if (typeof data.player?.peakWinStreak === "number") {
+      max = Math.max(max, data.player.peakWinStreak);
+    }
+    if (typeof data.analytics?.highestWinStreak === "number") {
+      max = Math.max(max, data.analytics.highestWinStreak);
+    }
+    if (typeof data.player?.currentStreak === "number" && data.player.currentStreak > 0) {
+      max = Math.max(max, data.player.currentStreak);
+    }
+
+    if (Array.isArray(data.recentMatches) && data.recentMatches.length > 0) {
+      const sorted = [...data.recentMatches].sort(
+        (a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+      let run = 0;
+      for (const m of sorted) {
+        if (m.isWin) {
+          run++;
+          if (run > max) max = run;
+        } else {
+          run = 0;
+        }
+      }
+    }
+    return max;
+  };
+
+  const peakWinStreak = getAccuratePeakStreak();
+
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
       <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl relative max-h-[92vh] flex flex-col my-auto">
@@ -271,9 +308,7 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                   <div>
                     Highest Streak:{" "}
                     <strong className="text-amber-400">
-                      {(data.player.highestWinStreak ?? 0) > 0
-                        ? `${data.player.highestWinStreak}W 🔥`
-                        : "0W"}
+                      {peakWinStreak > 0 ? `${peakWinStreak}W 🔥` : "0W"}
                     </strong>
                   </div>
                 </div>
@@ -319,12 +354,14 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                         <span className="text-slate-500">—</span>
                       )}
                     </div>
-                    <div className="text-[11px] text-slate-400 font-mono">
-                      {data.player.currentStreak > 0
-                        ? "Active Win Streak"
-                        : data.player.currentStreak < 0
-                        ? "Active Loss Streak"
-                        : "Current Form"}
+                    <div className="text-[11px] font-mono space-y-0.5">
+                      <div className="text-slate-400">
+                        {data.player.currentStreak > 0 ? "Active" : "Current"}
+                      </div>
+                      <div className="text-amber-400 font-bold">
+                        <span className="text-slate-400 font-normal">Peak: </span>
+                        {peakWinStreak > 0 ? `${peakWinStreak}W 🔥` : "0W"}
+                      </div>
                     </div>
                   </div>
 
