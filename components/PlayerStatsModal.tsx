@@ -536,57 +536,88 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                   : null;
 
               return (
-                <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-purple-400" />
-                      <h4 className="text-sm font-bold text-white">Opponent Quality & Index</h4>
-                      <span className="text-[10px] bg-purple-500/15 border border-purple-500/30 text-purple-300 px-2 py-0.5 rounded-full font-mono font-semibold">
-                        Strength Metric
-                      </span>
+                <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-4 space-y-3.5">
+                  {/* Card Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-800/70">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-sm font-bold text-white whitespace-nowrap">
+                          Opponent Quality & Index
+                        </h4>
+                        <span className="text-[10px] bg-purple-500/15 border border-purple-500/30 text-purple-300 px-2 py-0.5 rounded-full font-mono font-semibold whitespace-nowrap">
+                          Schedule Strength
+                        </span>
+                      </div>
                     </div>
-                    <p className="text-xs text-slate-400 max-w-md">
-                      Quality Index factors game-by-game point differentials with opponent difficulty: <span className="text-slate-300 font-mono">(Point Diff × Opponent ELO)</span>.
+                    <p className="text-xs text-slate-400">
+                      Point differentials factored by opponent difficulty:{" "}
+                      <span className="text-slate-300 font-mono text-[11px]">
+                        (Point Diff × Opponent ELO)
+                      </span>
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-4 text-xs font-mono">
-                    <div className="text-right">
-                      <div className="text-purple-400 text-[11px] font-semibold">Quality Index</div>
-                      <div className="text-xl font-black text-purple-300">
+                  {/* 4-Stat Metric Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono">
+                    {/* Quality Index */}
+                    <div className="bg-slate-900/50 border border-slate-800/60 rounded-xl p-3 flex flex-col justify-between">
+                      <div className="text-[11px] text-purple-400 font-semibold mb-1">
+                        Quality Index
+                      </div>
+                      <div className="text-2xl font-black text-purple-300">
                         {Number(qualityIndex).toFixed(1)}
                       </div>
+                      <div className="text-[10px] text-slate-500 font-sans mt-1">
+                        Point-scaled rating
+                      </div>
                     </div>
-                    <div className="h-8 w-px bg-slate-800 hidden sm:block" />
-                    <div className="text-right">
-                      <div className="text-slate-500 text-[11px]">Avg Opponent ELO</div>
-                      <div className="text-sm font-bold text-slate-200">
+
+                    {/* Avg Opponent ELO */}
+                    <div className="bg-slate-900/50 border border-slate-800/60 rounded-xl p-3 flex flex-col justify-between">
+                      <div className="text-[11px] text-slate-400 mb-1">
+                        Avg Opponent
+                      </div>
+                      <div className="text-2xl font-black text-slate-100">
                         {Number(avgOpponent).toFixed(1)}
                       </div>
-                    </div>
-                    <div className="h-8 w-px bg-slate-800 hidden sm:block" />
-                    <div className="text-right">
-                      <div className="text-slate-500 text-[11px]">Point Diff</div>
-                      <div className={`text-sm font-bold ${pointDiff >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                        {pointDiff > 0 ? `+${pointDiff}` : pointDiff} pts
+                      <div className="text-[10px] text-slate-500 font-sans mt-1">
+                        Average difficulty
                       </div>
                     </div>
-                    {peakEloDefeated != null && !isNaN(Number(peakEloDefeated)) && (
-                      <>
-                        <div className="h-8 w-px bg-slate-800 hidden sm:block" />
-                        <div className="text-right">
-                          <div className="text-slate-500 text-[11px]">Peak Defeat</div>
-                          <div className="text-sm font-bold text-amber-300">
-                            {Number(peakEloDefeated).toFixed(1)} ELO
-                          </div>
-                          {peakDefeatedName && (
-                            <div className="text-[10px] text-slate-400 truncate max-w-[110px]" title={`Defeated ${peakDefeatedName}`}>
-                              vs {peakDefeatedName}
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    )}
+
+                    {/* Point Diff */}
+                    <div className="bg-slate-900/50 border border-slate-800/60 rounded-xl p-3 flex flex-col justify-between">
+                      <div className="text-[11px] text-slate-400 mb-1">
+                        Point Diff
+                      </div>
+                      <div className={`text-2xl font-black ${pointDiff >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                        {pointDiff > 0 ? `+${pointDiff}` : pointDiff}
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-sans mt-1">
+                        Career differential
+                      </div>
+                    </div>
+
+                    {/* Peak Defeat */}
+                    <div className="bg-slate-900/50 border border-slate-800/60 rounded-xl p-3 flex flex-col justify-between">
+                      <div className="text-[11px] text-slate-400 mb-1">
+                        Peak Defeat
+                      </div>
+                      <div className="text-2xl font-black text-amber-400 truncate">
+                        {peakEloDefeated != null && !isNaN(Number(peakEloDefeated))
+                          ? `${Number(peakEloDefeated).toFixed(1)}`
+                          : "—"}
+                      </div>
+                      <div
+                        className="text-[10px] text-amber-300/80 truncate mt-1"
+                        title={peakDefeatedName ? `Defeated ${peakDefeatedName}` : ""}
+                      >
+                        {peakDefeatedName ? `vs ${peakDefeatedName}` : "No defeats yet"}
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
