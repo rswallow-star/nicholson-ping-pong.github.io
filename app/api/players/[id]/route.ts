@@ -56,7 +56,6 @@ export async function GET(
         opponent: { select: { id: true, displayName: true, roomNumber: true } },
       },
       orderBy: { createdAt: "desc" },
-      take: 50,
     });
 
     // Compute advanced stats
@@ -146,6 +145,39 @@ export async function GET(
     const avgPointsScored =
       totalGames > 0 ? (totalPointsScored / totalGames).toFixed(1) : "0.0";
 
+    // Fetch all chronological confirmed matches for 100% accurate highest streak calculation
+    const allCareerMatches = await prisma.match.findMany({
+      where: {
+        status: "CONFIRMED",
+        OR: [{ submitterId: id }, { opponentId: id }],
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    let runningStreak = 0;
+    let highestWinStreak = 0;
+
+    for (const m of allCareerMatches) {
+      const isSubmitter = m.submitterId === id;
+      const myScore = isSubmitter ? m.submitterScore : m.opponentScore;
+      const theirScore = isSubmitter ? m.opponentScore : m.submitterScore;
+      const isWin = myScore > theirScore;
+
+      if (isWin) {
+        runningStreak++;
+        if (runningStreak > highestWinStreak) {
+          highestWinStreak = runningStreak;
+        }
+      } else {
+        runningStreak = 0;
+      }
+    }
+
+    // Ensure it reflects at least positive current streak
+    if (user.rating?.currentStreak && user.rating.currentStreak > highestWinStreak) {
+      highestWinStreak = user.rating.currentStreak;
+    }
+
     return NextResponse.json({
       player: {
         id: user.id,
@@ -158,6 +190,8 @@ export async function GET(
         losses: user.rating?.losses ?? 0,
         matchesPlayed: user.rating?.matchesPlayed ?? 0,
         currentStreak: user.rating?.currentStreak ?? 0,
+        highestWinStreak,
+        peakWinStreak: highestWinStreak,
         winRate,
         registeredAt: user.createdAt,
       },
@@ -166,6 +200,8 @@ export async function GET(
         gamesTo11: { wins: gamesTo11Wins, losses: gamesTo11Losses },
         avgPointsScored,
         highestEloDefeated,
+        highestWinStreak,
+        peakWinStreak: highestWinStreak,
       },
       chartData,
       recentMatches: gameLogs,
