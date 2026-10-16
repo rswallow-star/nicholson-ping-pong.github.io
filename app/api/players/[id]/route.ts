@@ -52,8 +52,8 @@ export async function GET(
         OR: [{ submitterId: id }, { opponentId: id }],
       },
       include: {
-        submitter: { select: { id: true, displayName: true, roomNumber: true } },
-        opponent: { select: { id: true, displayName: true, roomNumber: true } },
+        submitter: { select: { id: true, displayName: true, roomNumber: true, rating: true } },
+        opponent: { select: { id: true, displayName: true, roomNumber: true, rating: true } },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -69,6 +69,7 @@ export async function GET(
     let points21Conceded = 0;
     let points11Scored = 0;
     let points11Conceded = 0;
+    let totalOpponentElo = 0;
     let highestEloDefeated: { name: string; elo: number } | null = null;
 
     const gameLogs = confirmedMatches.map((m) => {
@@ -78,6 +79,12 @@ export async function GET(
       const isWin = myScore > theirScore;
       const opponent = isSubmitter ? m.opponent : m.submitter;
       const opponentElo = isSubmitter ? m.opponentEloBefore : m.submitterEloBefore;
+      const opponentCurrentElo =
+        (isSubmitter ? m.opponent.rating?.currentElo : m.submitter.rating?.currentElo) ??
+        opponentElo ??
+        1200;
+
+      totalOpponentElo += opponentCurrentElo;
 
       const is11 =
         (m.notes && m.notes.includes("[Game to 11]")) ||
@@ -193,6 +200,12 @@ export async function GET(
     const matches21 = gamesTo21Wins + gamesTo21Losses;
     const matches11 = gamesTo11Wins + gamesTo11Losses;
 
+    const avgOpponentElo =
+      totalGames > 0 ? Math.round((totalOpponentElo / totalGames) * 10) / 10 : 1200.0;
+    const winsCount = user.rating?.wins ?? 0;
+    const smoothedWinRate = (winsCount + 1) / (totalGames + 2);
+    const qualityIndex = Math.round(smoothedWinRate * avgOpponentElo * 10) / 10;
+
     const avgPoints21Scored =
       matches21 > 0 ? (points21Scored / matches21).toFixed(1) : "0.0";
     const avgPoints21Conceded =
@@ -217,6 +230,10 @@ export async function GET(
         highestWinStreak,
         peakWinStreak: highestWinStreak,
         winRate,
+        qualityIndex,
+        avgOpponentElo,
+        opponentDifficulty: avgOpponentElo,
+        smoothedWinRate: Math.round(smoothedWinRate * 1000) / 10,
         totalPointsFor: totalPointsScored,
         totalPointsAgainst: totalPointsConceded,
         pointDifferential,
@@ -272,6 +289,10 @@ export async function GET(
         avgPoints21Conceded,
         avgPoints11Scored,
         avgPoints11Conceded,
+        qualityIndex,
+        avgOpponentElo,
+        opponentDifficulty: avgOpponentElo,
+        smoothedWinRate: Math.round(smoothedWinRate * 1000) / 10,
         highestEloDefeated,
         highestWinStreak,
         peakWinStreak: highestWinStreak,

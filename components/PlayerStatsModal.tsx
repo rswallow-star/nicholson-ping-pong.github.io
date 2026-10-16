@@ -16,6 +16,7 @@ import {
   Pencil,
   Trash2,
   Check,
+  Sparkles,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -311,6 +312,12 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                       {peakWinStreak > 0 ? `${peakWinStreak}W 🔥` : "0W"}
                     </strong>
                   </div>
+                  <div>
+                    Quality Index:{" "}
+                    <strong className="text-purple-400 font-bold">
+                      {(data.player.qualityIndex ?? data.analytics?.qualityIndex ?? 0).toFixed(1)}
+                    </strong>
+                  </div>
                 </div>
               </div>
             </div>
@@ -502,6 +509,68 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                         {avg11For !== "—" ? `${avg11For} scored / ${avg11Against} conceded` : "No 11-pt games"}
                       </div>
                     </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Opponent Quality & Quality Index Card */}
+            {(() => {
+              const qualityIndex =
+                data.player?.qualityIndex ?? data.analytics?.qualityIndex ?? 0;
+              const avgOpponent =
+                data.player?.avgOpponentElo ?? data.analytics?.avgOpponentElo ?? 1200;
+              const smoothedWinRate =
+                data.player?.smoothedWinRate ?? data.analytics?.smoothedWinRate ?? 50;
+              const highestEloDefeated = data.analytics?.highestEloDefeated;
+
+              return (
+                <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-purple-400" />
+                      <h4 className="text-sm font-bold text-white">Opponent Quality & Index</h4>
+                      <span className="text-[10px] bg-purple-500/15 border border-purple-500/30 text-purple-300 px-2 py-0.5 rounded-full font-mono font-semibold">
+                        Strength Metric
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 max-w-md">
+                      Quality Index balances win rate with opponent strength: <span className="text-slate-300 font-mono">(Smoothed Win Rate × Avg Opponent ELO)</span>.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-4 text-xs font-mono">
+                    <div className="text-right">
+                      <div className="text-purple-400 text-[11px] font-semibold">Quality Index</div>
+                      <div className="text-xl font-black text-purple-300">
+                        {Number(qualityIndex).toFixed(1)}
+                      </div>
+                    </div>
+                    <div className="h-8 w-px bg-slate-800 hidden sm:block" />
+                    <div className="text-right">
+                      <div className="text-slate-500 text-[11px]">Avg Opponent ELO</div>
+                      <div className="text-sm font-bold text-slate-200">
+                        {Number(avgOpponent).toFixed(1)}
+                      </div>
+                    </div>
+                    <div className="h-8 w-px bg-slate-800 hidden sm:block" />
+                    <div className="text-right">
+                      <div className="text-slate-500 text-[11px]">Smoothed Win %</div>
+                      <div className="text-sm font-bold text-emerald-400">
+                        {Number(smoothedWinRate).toFixed(1)}%
+                      </div>
+                    </div>
+                    {highestEloDefeated && (
+                      <>
+                        <div className="h-8 w-px bg-slate-800 hidden sm:block" />
+                        <div className="text-right">
+                          <div className="text-slate-500 text-[11px]">Peak Defeat</div>
+                          <div className="text-sm font-bold text-amber-300">
+                            {Number(highestEloDefeated).toFixed(1)} ELO
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               );
