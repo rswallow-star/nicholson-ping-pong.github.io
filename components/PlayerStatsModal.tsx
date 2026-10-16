@@ -520,8 +520,8 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                 data.player?.qualityIndex ?? data.analytics?.qualityIndex ?? 0;
               const avgOpponent =
                 data.player?.avgOpponentElo ?? data.analytics?.avgOpponentElo ?? 1200;
-              const smoothedWinRate =
-                data.player?.smoothedWinRate ?? data.analytics?.smoothedWinRate ?? 50;
+              const pointDiff =
+                data.player?.pointDifferential ?? data.analytics?.pointDifferential ?? 0;
               const highestEloDefeated = data.analytics?.highestEloDefeated;
 
               return (
@@ -535,7 +535,7 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                       </span>
                     </div>
                     <p className="text-xs text-slate-400 max-w-md">
-                      Quality Index balances win rate with opponent strength: <span className="text-slate-300 font-mono">(Smoothed Win Rate × Avg Opponent ELO)</span>.
+                      Quality Index factors game-by-game point differentials with opponent difficulty: <span className="text-slate-300 font-mono">(Point Diff × Opponent ELO)</span>.
                     </p>
                   </div>
 
@@ -555,9 +555,9 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                     </div>
                     <div className="h-8 w-px bg-slate-800 hidden sm:block" />
                     <div className="text-right">
-                      <div className="text-slate-500 text-[11px]">Smoothed Win %</div>
-                      <div className="text-sm font-bold text-emerald-400">
-                        {Number(smoothedWinRate).toFixed(1)}%
+                      <div className="text-slate-500 text-[11px]">Point Diff</div>
+                      <div className={`text-sm font-bold ${pointDiff >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                        {pointDiff > 0 ? `+${pointDiff}` : pointDiff} pts
                       </div>
                     </div>
                     {highestEloDefeated && (

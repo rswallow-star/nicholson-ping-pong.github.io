@@ -332,6 +332,7 @@ export async function GET(req: Request) {
       let totalOppElo = 0;
       let otherPtsFor = 0;
       let otherPtsAgainst = 0;
+      let totalGameQuality = 0;
 
       for (const m of otherMatches) {
         const isSub = m.submitterId === playerId;
@@ -346,14 +347,21 @@ export async function GET(req: Request) {
         otherPtsFor += myScore;
         otherPtsAgainst += theirScore;
         if (isWin) wins++;
+
+        // Factor point differential of this game with opponent difficulty
+        const pointDiff = myScore - theirScore;
+        const totalPts = myScore + theirScore;
+        const marginRatio = totalPts > 0 ? pointDiff / (totalPts + 2) : 0;
+        const gameQuality = oppElo * (1 + marginRatio);
+        totalGameQuality += gameQuality;
       }
 
       const count = otherMatches.length;
       const losses = count - wins;
       const avgOppElo = count > 0 ? Math.round((totalOppElo / count) * 10) / 10 : 1200.0;
       const rawWinRate = count > 0 ? Math.round((wins / count) * 1000) / 10 : 0;
-      const smoothedWinRate = (wins + 1) / (count + 2);
-      const qualityScore = Math.round(smoothedWinRate * avgOppElo * 10) / 10;
+      const qualityScore =
+        count > 0 ? Math.round((totalGameQuality / count) * 10) / 10 : 1200.0;
 
       return {
         matchesCount: count,
@@ -372,7 +380,7 @@ export async function GET(req: Request) {
     const q1 = computeOpponentQuality(p1Id, p2Id);
     const q2 = computeOpponentQuality(p2Id, p1Id);
 
-    const qualityRatioP1 = q1.qualityScore / (q1.qualityScore + q2.qualityScore);
+    const qualityRatioP1 = getExpectedScore(q1.qualityScore, q2.qualityScore);
     const qualityRatioP2 = 1.0 - qualityRatioP1;
 
     // 3. Probabilistic Score Distribution Model:

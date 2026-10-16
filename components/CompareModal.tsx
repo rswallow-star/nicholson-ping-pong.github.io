@@ -865,7 +865,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                             >
                               {data.prediction.opponentStrength.p1.qualityScore.toFixed(0)}
                             </span>
-                            <span className="text-xs font-sans text-slate-400" title="Win Rate adjusted by Opponent Difficulty">
+                            <span className="text-xs font-sans text-slate-400" title="Point Differential factored by Opponent Difficulty">
                               Quality Index
                             </span>
                             <span

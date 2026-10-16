@@ -70,6 +70,7 @@ export async function GET(
     let points11Scored = 0;
     let points11Conceded = 0;
     let totalOpponentElo = 0;
+    let totalGameQuality = 0;
     let highestEloDefeated: { name: string; elo: number } | null = null;
 
     const gameLogs = confirmedMatches.map((m) => {
@@ -85,6 +86,13 @@ export async function GET(
         1200;
 
       totalOpponentElo += opponentCurrentElo;
+
+      // Factor point differential of this game with opponent difficulty
+      const pointDiff = myScore - theirScore;
+      const totalPts = myScore + theirScore;
+      const marginRatio = totalPts > 0 ? pointDiff / (totalPts + 2) : 0;
+      const gameQuality = opponentCurrentElo * (1 + marginRatio);
+      totalGameQuality += gameQuality;
 
       const is11 =
         (m.notes && m.notes.includes("[Game to 11]")) ||
@@ -200,11 +208,13 @@ export async function GET(
     const matches21 = gamesTo21Wins + gamesTo21Losses;
     const matches11 = gamesTo11Wins + gamesTo11Losses;
 
+    const matchCount = confirmedMatches.length;
     const avgOpponentElo =
-      totalGames > 0 ? Math.round((totalOpponentElo / totalGames) * 10) / 10 : 1200.0;
+      matchCount > 0 ? Math.round((totalOpponentElo / matchCount) * 10) / 10 : 1200.0;
     const winsCount = user.rating?.wins ?? 0;
     const smoothedWinRate = (winsCount + 1) / (totalGames + 2);
-    const qualityIndex = Math.round(smoothedWinRate * avgOpponentElo * 10) / 10;
+    const qualityIndex =
+      matchCount > 0 ? Math.round((totalGameQuality / matchCount) * 10) / 10 : 1200.0;
 
     const avgPoints21Scored =
       matches21 > 0 ? (points21Scored / matches21).toFixed(1) : "0.0";
