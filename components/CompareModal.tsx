@@ -12,6 +12,8 @@ import {
   Sparkles,
   HelpCircle,
   TrendingUp,
+  Target,
+  Zap,
 } from "lucide-react";
 
 interface CompareModalProps {
@@ -232,73 +234,61 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                   />
                 </div>
 
-                {/* 3-Factor Breakdown Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 my-3">
-                  {/* Factor 1: Head-to-Head */}
-                  <div
-                    className={`p-2.5 rounded-xl border ${
-                      data.prediction.hasH2h
-                        ? "bg-slate-900/90 border-slate-700/80"
-                        : "bg-slate-900/40 border-slate-800/40 opacity-60"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 mb-1">
-                      <span>Head-to-Head</span>
-                      <span className="font-mono text-amber-400 font-bold">
-                        {data.prediction.weights?.h2h ?? (data.prediction.hasH2h ? "50%" : "0%")}
-                      </span>
-                    </div>
-                    {data.prediction.hasH2h ? (
-                      <div className="text-xs font-mono font-bold flex justify-between items-center">
-                        <span className="text-emerald-400">{data.prediction.p1H2hWins}W</span>
-                        <span className="text-slate-500 font-normal text-[10px]">
-                          ({data.prediction.h2hMatchesCount} played)
-                        </span>
-                        <span className="text-purple-400">{data.prediction.p2H2hWins}W</span>
+                {/* Predicted Points Scored / Match Simulation */}
+                {data.prediction.projectedMatch && (
+                  <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 my-3.5 shadow-lg">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-300">
+                        <Target className="w-3.5 h-3.5 text-emerald-400" /> Projected Match Score
                       </div>
-                    ) : (
-                      <div className="text-[11px] text-slate-500 italic">No matches yet</div>
-                    )}
-                  </div>
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        Score Distribution Model
+                      </span>
+                    </div>
 
-                  {/* Factor 2: ELO Rating */}
-                  <div className="p-2.5 rounded-xl border bg-slate-900/90 border-slate-700/80">
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 mb-1">
-                      <span>ELO Rating</span>
-                      <span className="font-mono text-sky-400 font-bold">
-                        {data.prediction.weights?.elo ?? (data.prediction.hasH2h ? "25%" : "50%")}
-                      </span>
-                    </div>
-                    <div className="text-xs font-mono font-bold flex justify-between items-center">
-                      <span className="text-emerald-400">
-                        {data.prediction.factors?.elo?.p1 ?? data.prediction.eloExpectedP1}%
-                      </span>
-                      <span className="text-slate-500 font-normal text-[10px]">expected</span>
-                      <span className="text-purple-400">
-                        {data.prediction.factors?.elo?.p2 ?? data.prediction.eloExpectedP2}%
-                      </span>
-                    </div>
-                  </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Game to 21 */}
+                      <div className="bg-slate-950/70 border border-slate-800/90 rounded-xl p-3 flex items-center justify-between">
+                        <div>
+                          <div className="text-[11px] font-semibold text-purple-400 flex items-center gap-1">
+                            <Trophy className="w-3.5 h-3.5" /> Game to 21
+                          </div>
+                          <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                            Exp: {data.prediction.projectedMatch.game21.projectedPointsP1} – {data.prediction.projectedMatch.game21.projectedPointsP2} pts
+                          </div>
+                        </div>
+                        <div className="text-right font-mono">
+                          <div className="text-xl font-black text-white">
+                            {data.prediction.projectedMatch.game21.predictedScoreP1} – {data.prediction.projectedMatch.game21.predictedScoreP2}
+                          </div>
+                          <div className="text-[10px] text-amber-400 font-semibold">
+                            {data.prediction.projectedMatch.game21.likelihood}% probability
+                          </div>
+                        </div>
+                      </div>
 
-                  {/* Factor 3: Opponent Difficulty & Record against Others */}
-                  <div className="p-2.5 rounded-xl border bg-slate-900/90 border-slate-700/80">
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 mb-1">
-                      <span>Opponent Quality</span>
-                      <span className="font-mono text-emerald-400 font-bold">
-                        {data.prediction.weights?.opponentQuality ?? (data.prediction.hasH2h ? "25%" : "50%")}
-                      </span>
-                    </div>
-                    <div className="text-xs font-mono font-bold flex justify-between items-center">
-                      <span className="text-emerald-400">
-                        {data.prediction.factors?.opponentQuality?.p1 ?? "—"}%
-                      </span>
-                      <span className="text-slate-500 font-normal text-[10px]">vs field</span>
-                      <span className="text-purple-400">
-                        {data.prediction.factors?.opponentQuality?.p2 ?? "—"}%
-                      </span>
+                      {/* Game to 11 */}
+                      <div className="bg-slate-950/70 border border-slate-800/90 rounded-xl p-3 flex items-center justify-between">
+                        <div>
+                          <div className="text-[11px] font-semibold text-sky-400 flex items-center gap-1">
+                            <Zap className="w-3.5 h-3.5" /> Game to 11
+                          </div>
+                          <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                            Exp: {data.prediction.projectedMatch.game11.projectedPointsP1} – {data.prediction.projectedMatch.game11.projectedPointsP2} pts
+                          </div>
+                        </div>
+                        <div className="text-right font-mono">
+                          <div className="text-xl font-black text-white">
+                            {data.prediction.projectedMatch.game11.predictedScoreP1} – {data.prediction.projectedMatch.game11.predictedScoreP2}
+                          </div>
+                          <div className="text-[10px] text-amber-400 font-semibold">
+                            {data.prediction.projectedMatch.game11.likelihood}% probability
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 <p className="text-[10px] text-slate-500 italic mt-1 border-t border-slate-800/80 pt-2">
                   *{data.prediction.methodology}
@@ -435,6 +425,148 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                       )}
                     </span>
                   </div>
+
+                  {/* Career Points Scoring & Differential */}
+                  {(() => {
+                    const p1PtsFor = data.player1.totalPointsFor ?? data.prediction?.careerPoints?.p1?.pointsFor ?? 0;
+                    const p2PtsFor = data.player2.totalPointsFor ?? data.prediction?.careerPoints?.p2?.pointsFor ?? 0;
+                    const p1PtsAgainst = data.player1.totalPointsAgainst ?? data.prediction?.careerPoints?.p1?.pointsAgainst ?? 0;
+                    const p2PtsAgainst = data.player2.totalPointsAgainst ?? data.prediction?.careerPoints?.p2?.pointsAgainst ?? 0;
+                    const p1Diff = data.player1.pointDifferential ?? (p1PtsFor - p1PtsAgainst);
+                    const p2Diff = data.player2.pointDifferential ?? (p2PtsFor - p2PtsAgainst);
+
+                    return (
+                      <>
+                        {/* Total Points For */}
+                        <div className="py-2.5 px-4 flex items-center justify-between font-mono">
+                          <span
+                            className={`font-bold ${
+                              p1PtsFor >= p2PtsFor ? "text-emerald-400 font-black" : "text-slate-300"
+                            }`}
+                          >
+                            {p1PtsFor}
+                            {data.player1.avgPointsFor ? (
+                              <span className="text-slate-500 text-xs ml-1 font-normal font-sans">
+                                ({data.player1.avgPointsFor}/gm)
+                              </span>
+                            ) : null}
+                          </span>
+                          <span className="text-xs font-sans text-slate-400" title="Total career points scored across all recorded matches">
+                            Total Points (For)
+                          </span>
+                          <span
+                            className={`font-bold text-right ${
+                              p2PtsFor >= p1PtsFor ? "text-purple-400 font-black" : "text-slate-300"
+                            }`}
+                          >
+                            {p2PtsFor}
+                            {data.player2.avgPointsFor ? (
+                              <span className="text-slate-500 text-xs ml-1 font-normal font-sans">
+                                ({data.player2.avgPointsFor}/gm)
+                              </span>
+                            ) : null}
+                          </span>
+                        </div>
+
+                        {/* Total Points Against */}
+                        <div className="py-2.5 px-4 flex items-center justify-between font-mono">
+                          <span
+                            className={`font-bold ${
+                              p1PtsAgainst <= p2PtsAgainst ? "text-emerald-400 font-black" : "text-slate-300"
+                            }`}
+                          >
+                            {p1PtsAgainst}
+                            {data.player1.avgPointsAgainst ? (
+                              <span className="text-slate-500 text-xs ml-1 font-normal font-sans">
+                                ({data.player1.avgPointsAgainst}/gm)
+                              </span>
+                            ) : null}
+                          </span>
+                          <span className="text-xs font-sans text-slate-400" title="Total career points conceded across all recorded matches (lower is better defense)">
+                            Points Conceded (Against)
+                          </span>
+                          <span
+                            className={`font-bold text-right ${
+                              p2PtsAgainst <= p1PtsAgainst ? "text-purple-400 font-black" : "text-slate-300"
+                            }`}
+                          >
+                            {p2PtsAgainst}
+                            {data.player2.avgPointsAgainst ? (
+                              <span className="text-slate-500 text-xs ml-1 font-normal font-sans">
+                                ({data.player2.avgPointsAgainst}/gm)
+                              </span>
+                            ) : null}
+                          </span>
+                        </div>
+
+                        {/* Point Differential */}
+                        <div className="py-2.5 px-4 flex items-center justify-between font-mono">
+                          <span
+                            className={`font-bold ${
+                              p1Diff > 0
+                                ? "text-emerald-400"
+                                : p1Diff < 0
+                                ? "text-rose-400"
+                                : "text-slate-300"
+                            }`}
+                          >
+                            {p1Diff > 0 ? `+${p1Diff}` : p1Diff}
+                          </span>
+                          <span className="text-xs font-sans text-slate-400" title="Net career point differential (Points For minus Points Against)">
+                            Point Differential
+                          </span>
+                          <span
+                            className={`font-bold text-right ${
+                              p2Diff > 0
+                                ? "text-purple-400"
+                                : p2Diff < 0
+                                ? "text-rose-400"
+                                : "text-slate-300"
+                            }`}
+                          >
+                            {p2Diff > 0 ? `+${p2Diff}` : p2Diff}
+                          </span>
+                        </div>
+
+                        {/* Direct Head-to-Head Points (if played) */}
+                        {data.headToHead?.matches?.length > 0 && (
+                          <div className="py-2.5 px-4 flex items-center justify-between font-mono bg-purple-950/15 border-y border-purple-500/20">
+                            <span
+                              className={`font-bold ${
+                                (data.headToHead.p1H2hPoints ?? 0) >= (data.headToHead.p2H2hPoints ?? 0)
+                                  ? "text-emerald-400 font-black"
+                                  : "text-slate-300"
+                              }`}
+                            >
+                              {data.headToHead.p1H2hPoints ?? 0}
+                              {data.headToHead.p1AvgPoints ? (
+                                <span className="text-slate-400 text-xs ml-1 font-normal font-sans">
+                                  ({data.headToHead.p1AvgPoints}/gm)
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="text-xs font-sans text-purple-300 font-semibold" title="Total points scored against each other in direct head-to-head matches">
+                              H2H Points Scored
+                            </span>
+                            <span
+                              className={`font-bold text-right ${
+                                (data.headToHead.p2H2hPoints ?? 0) >= (data.headToHead.p1H2hPoints ?? 0)
+                                  ? "text-purple-400 font-black"
+                                  : "text-slate-300"
+                              }`}
+                            >
+                              {data.headToHead.p2H2hPoints ?? 0}
+                              {data.headToHead.p2AvgPoints ? (
+                                <span className="text-slate-400 text-xs ml-1 font-normal font-sans">
+                                  ({data.headToHead.p2AvgPoints}/gm)
+                                </span>
+                              ) : null}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {/* Opponent Difficulty & Strength of Schedule */}
                   {data.prediction.opponentStrength && (
