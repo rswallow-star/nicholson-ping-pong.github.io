@@ -156,6 +156,18 @@ export async function GET(req: Request) {
     let p1H2hPoints = 0;
     let p2H2hPoints = 0;
 
+    let p1H2h21Wins = 0;
+    let p2H2h21Wins = 0;
+    let p1H2h21Points = 0;
+    let p2H2h21Points = 0;
+    let countH2h21 = 0;
+
+    let p1H2h11Wins = 0;
+    let p2H2h11Wins = 0;
+    let p1H2h11Points = 0;
+    let p2H2h11Points = 0;
+    let countH2h11 = 0;
+
     const formattedMatches = h2hMatches.map((m) => {
       const isP1Submitter = m.submitterId === p1Id;
       const p1Score = isP1Submitter ? m.submitterScore : m.opponentScore;
@@ -172,6 +184,20 @@ export async function GET(req: Request) {
         (m.notes && m.notes.includes("[Game to 11]")) ||
         Math.max(p1Score, p2Score) <= 14;
 
+      if (is11) {
+        countH2h11++;
+        p1H2h11Points += p1Score;
+        p2H2h11Points += p2Score;
+        if (winnerId === p1Id) p1H2h11Wins++;
+        else p2H2h11Wins++;
+      } else {
+        countH2h21++;
+        p1H2h21Points += p1Score;
+        p2H2h21Points += p2Score;
+        if (winnerId === p1Id) p1H2h21Wins++;
+        else p2H2h21Wins++;
+      }
+
       return {
         id: m.id,
         date: m.confirmedAt || m.createdAt,
@@ -186,24 +212,93 @@ export async function GET(req: Request) {
     const h2hTotal = h2hMatches.length;
     const hasH2h = h2hTotal > 0;
 
-    // Career Points Calculation across all confirmed matches
+    // Career Points Calculation across all confirmed matches, broken down by format
     const getCareerPoints = (playerId: string) => {
       const pMatches = allMatches.filter(
         (m) => m.submitterId === playerId || m.opponentId === playerId
       );
       let ptsFor = 0;
       let ptsAgainst = 0;
+      let wins = 0;
+      let losses = 0;
+
+      let pts21For = 0;
+      let pts21Against = 0;
+      let wins21 = 0;
+      let losses21 = 0;
+
+      let pts11For = 0;
+      let pts11Against = 0;
+      let wins11 = 0;
+      let losses11 = 0;
+
       for (const m of pMatches) {
         const isSub = m.submitterId === playerId;
-        ptsFor += isSub ? m.submitterScore : m.opponentScore;
-        ptsAgainst += isSub ? m.opponentScore : m.submitterScore;
+        const myScore = isSub ? m.submitterScore : m.opponentScore;
+        const theirScore = isSub ? m.opponentScore : m.submitterScore;
+        const isWin = myScore > theirScore;
+
+        if (isWin) wins++;
+        else losses++;
+
+        ptsFor += myScore;
+        ptsAgainst += theirScore;
+
+        const is11 =
+          (m.notes && m.notes.includes("[Game to 11]")) ||
+          Math.max(m.submitterScore, m.opponentScore) <= 14;
+
+        if (is11) {
+          pts11For += myScore;
+          pts11Against += theirScore;
+          if (isWin) wins11++;
+          else losses11++;
+        } else {
+          pts21For += myScore;
+          pts21Against += theirScore;
+          if (isWin) wins21++;
+          else losses21++;
+        }
       }
+
       const count = pMatches.length;
+      const count21 = wins21 + losses21;
+      const count11 = wins11 + losses11;
+
       return {
         matchesCount: count,
+        wins,
+        losses,
+        winRate: count > 0 ? Math.round((wins / count) * 1000) / 10 : 0,
         pointsFor: ptsFor,
         pointsAgainst: ptsAgainst,
         pointDiff: ptsFor - ptsAgainst,
+        games21: {
+          matchesCount: count21,
+          wins: wins21,
+          losses: losses21,
+          winRate: count21 > 0 ? Math.round((wins21 / count21) * 1000) / 10 : 0,
+          pointsFor: pts21For,
+          pointsAgainst: pts21Against,
+          pointDiff: pts21For - pts21Against,
+          avgPointsFor: count21 > 0 ? (pts21For / count21).toFixed(1) : "0.0",
+          avgPointsAgainst: count21 > 0 ? (pts21Against / count21).toFixed(1) : "0.0",
+        },
+        games11: {
+          matchesCount: count11,
+          wins: wins11,
+          losses: losses11,
+          winRate: count11 > 0 ? Math.round((wins11 / count11) * 1000) / 10 : 0,
+          pointsFor: pts11For,
+          pointsAgainst: pts11Against,
+          pointDiff: pts11For - pts11Against,
+          avgPointsFor: count11 > 0 ? (pts11For / count11).toFixed(1) : "0.0",
+          avgPointsAgainst: count11 > 0 ? (pts11Against / count11).toFixed(1) : "0.0",
+        },
+        avgPoints21For: count21 > 0 ? (pts21For / count21).toFixed(1) : "0.0",
+        avgPoints21Against: count21 > 0 ? (pts21Against / count21).toFixed(1) : "0.0",
+        avgPoints11For: count11 > 0 ? (pts11For / count11).toFixed(1) : "0.0",
+        avgPoints11Against: count11 > 0 ? (pts11Against / count11).toFixed(1) : "0.0",
         avgPointsFor: count > 0 ? (ptsFor / count).toFixed(1) : "0.0",
         avgPointsAgainst: count > 0 ? (ptsAgainst / count).toFixed(1) : "0.0",
       };
@@ -316,7 +411,7 @@ export async function GET(req: Request) {
     const scoreModelWinChanceP1 = sim21.probAWins;
 
     // 4. Master Win Probability Combination:
-    // User requested the Score Distribution Probability Model weigh in more heavily than the rest
+    // Overall blend
     let winChanceP1: number;
     let winChanceP2: number;
 
@@ -346,8 +441,48 @@ export async function GET(req: Request) {
     winChanceP1 = Math.max(1, Math.min(99, winChanceP1));
     winChanceP2 = Math.round((100 - winChanceP1) * 10) / 10;
 
+    // Game to 21 specific probability
+    let winChance21P1: number;
+    if (countH2h21 > 0) {
+      const h2h21Rate = (p1H2h21Wins + 0.5) / (countH2h21 + 1);
+      const raw21 =
+        0.50 * sim21.probAWins +
+        0.20 * h2h21Rate +
+        0.15 * eloExpectedP1 +
+        0.15 * qualityRatioP1;
+      winChance21P1 = Math.round(raw21 * 1000) / 10;
+    } else {
+      const raw21 =
+        0.60 * sim21.probAWins +
+        0.20 * eloExpectedP1 +
+        0.20 * qualityRatioP1;
+      winChance21P1 = Math.round(raw21 * 1000) / 10;
+    }
+    winChance21P1 = Math.max(1, Math.min(99, winChance21P1));
+    const winChance21P2 = Math.round((100 - winChance21P1) * 10) / 10;
+
+    // Game to 11 specific probability
+    let winChance11P1: number;
+    if (countH2h11 > 0) {
+      const h2h11Rate = (p1H2h11Wins + 0.5) / (countH2h11 + 1);
+      const raw11 =
+        0.50 * sim11.probAWins +
+        0.20 * h2h11Rate +
+        0.15 * eloExpectedP1 +
+        0.15 * qualityRatioP1;
+      winChance11P1 = Math.round(raw11 * 1000) / 10;
+    } else {
+      const raw11 =
+        0.60 * sim11.probAWins +
+        0.20 * eloExpectedP1 +
+        0.20 * qualityRatioP1;
+      winChance11P1 = Math.round(raw11 * 1000) / 10;
+    }
+    winChance11P1 = Math.max(1, Math.min(99, winChance11P1));
+    const winChance11P2 = Math.round((100 - winChance11P1) * 10) / 10;
+
     // Helper for player summary
-    const buildPlayerSummary = (user: typeof p1, rank: number, career: typeof p1Career) => {
+    const buildPlayerSummary = (user: typeof p1, rank: number, career: ReturnType<typeof getCareerPoints>) => {
       const wins = user.rating?.wins ?? 0;
       const losses = user.rating?.losses ?? 0;
       const total = wins + losses;
@@ -368,6 +503,12 @@ export async function GET(req: Request) {
         totalPointsFor: career.pointsFor,
         totalPointsAgainst: career.pointsAgainst,
         pointDifferential: career.pointDiff,
+        games21: career.games21,
+        games11: career.games11,
+        avgPoints21For: career.avgPoints21For,
+        avgPoints21Against: career.avgPoints21Against,
+        avgPoints11For: career.avgPoints11For,
+        avgPoints11Against: career.avgPoints11Against,
         avgPointsFor: career.avgPointsFor,
         avgPointsAgainst: career.avgPointsAgainst,
         isProvisional: total < 10,
@@ -380,10 +521,22 @@ export async function GET(req: Request) {
       prediction: {
         winChanceP1,
         winChanceP2,
+        winChance21P1,
+        winChance21P2,
+        winChance11P1,
+        winChance11P2,
         hasH2h,
+        hasH2h21: countH2h21 > 0,
+        hasH2h11: countH2h11 > 0,
         h2hMatchesCount: h2hTotal,
+        h2h21MatchesCount: countH2h21,
+        h2h11MatchesCount: countH2h11,
         p1H2hWins,
         p2H2hWins,
+        p1H2h21Wins,
+        p2H2h21Wins,
+        p1H2h11Wins,
+        p2H2h11Wins,
         projectedMatch: {
           game21: {
             predictedScoreP1: sim21.mostLikelyScore.scoreA,
@@ -407,6 +560,14 @@ export async function GET(req: Request) {
         h2hPoints: {
           p1: p1H2hPoints,
           p2: p2H2hPoints,
+          games21: {
+            p1: p1H2h21Points,
+            p2: p2H2h21Points,
+          },
+          games11: {
+            p1: p1H2h11Points,
+            p2: p2H2h11Points,
+          },
         },
         opponentStrength: {
           p1: q1,
@@ -424,6 +585,20 @@ export async function GET(req: Request) {
         p2Wins: p2H2hWins,
         p1H2hPoints,
         p2H2hPoints,
+        count21: countH2h21,
+        p1Wins21: p1H2h21Wins,
+        p2Wins21: p2H2h21Wins,
+        p1Points21: p1H2h21Points,
+        p2Points21: p2H2h21Points,
+        p1Avg21: countH2h21 > 0 ? (p1H2h21Points / countH2h21).toFixed(1) : null,
+        p2Avg21: countH2h21 > 0 ? (p2H2h21Points / countH2h21).toFixed(1) : null,
+        count11: countH2h11,
+        p1Wins11: p1H2h11Wins,
+        p2Wins11: p2H2h11Wins,
+        p1Points11: p1H2h11Points,
+        p2Points11: p2H2h11Points,
+        p1Avg11: countH2h11 > 0 ? (p1H2h11Points / countH2h11).toFixed(1) : null,
+        p2Avg11: countH2h11 > 0 ? (p2H2h11Points / countH2h11).toFixed(1) : null,
         p1AvgPoints: h2hTotal > 0 ? (p1H2hPoints / h2hTotal).toFixed(1) : null,
         p2AvgPoints: h2hTotal > 0 ? (p2H2hPoints / h2hTotal).toFixed(1) : null,
       },
