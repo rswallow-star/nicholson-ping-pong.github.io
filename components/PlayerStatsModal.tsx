@@ -396,6 +396,58 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
               );
             })()}
 
+            {/* Career Points Scoring Card */}
+            {(() => {
+              const ptsFor =
+                data.player?.totalPointsFor ??
+                data.analytics?.totalPointsFor ??
+                data.recentMatches?.reduce((sum: number, m: any) => sum + (m.myScore || 0), 0) ??
+                0;
+              const ptsAgainst =
+                data.player?.totalPointsAgainst ??
+                data.analytics?.totalPointsAgainst ??
+                data.recentMatches?.reduce((sum: number, m: any) => sum + (m.theirScore || 0), 0) ??
+                0;
+              const pointDiff = ptsFor - ptsAgainst;
+              const matchCount = (data.player?.wins ?? 0) + (data.player?.losses ?? 0) || 1;
+              const avgFor = (ptsFor / matchCount).toFixed(1);
+              const avgAgainst = (ptsAgainst / matchCount).toFixed(1);
+
+              return (
+                <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                      <Target className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-slate-400">Career Points</div>
+                      <div className="text-lg font-black font-mono text-white flex items-center gap-2">
+                        <span className="text-emerald-400">{ptsFor} For</span>
+                        <span className="text-slate-600">•</span>
+                        <span className="text-slate-400">{ptsAgainst} Against</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-xs font-mono">
+                    <div className="text-right">
+                      <div className="text-slate-500 text-[11px]">Point Differential</div>
+                      <div className={`text-base font-black ${pointDiff >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                        {pointDiff > 0 ? `+${pointDiff}` : pointDiff} pts
+                      </div>
+                    </div>
+                    <div className="h-8 w-px bg-slate-800 hidden sm:block" />
+                    <div className="text-right hidden sm:block">
+                      <div className="text-slate-500 text-[11px]">Avg / Match</div>
+                      <div className="text-slate-200 font-bold">
+                        {avgFor} scored / {avgAgainst} conceded
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Interactive ELO Progression Graph */}
             <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
