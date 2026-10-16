@@ -522,7 +522,18 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                 data.player?.avgOpponentElo ?? data.analytics?.avgOpponentElo ?? 1200;
               const pointDiff =
                 data.player?.pointDifferential ?? data.analytics?.pointDifferential ?? 0;
-              const highestEloDefeated = data.analytics?.highestEloDefeated;
+              const highestDefeatedObj =
+                data.analytics?.highestEloDefeated ?? data.player?.highestEloDefeated;
+              const peakEloDefeated =
+                typeof highestDefeatedObj === "object" && highestDefeatedObj !== null
+                  ? highestDefeatedObj.elo
+                  : typeof highestDefeatedObj === "number"
+                  ? highestDefeatedObj
+                  : null;
+              const peakDefeatedName =
+                typeof highestDefeatedObj === "object" && highestDefeatedObj !== null
+                  ? highestDefeatedObj.name
+                  : null;
 
               return (
                 <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -560,14 +571,19 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                         {pointDiff > 0 ? `+${pointDiff}` : pointDiff} pts
                       </div>
                     </div>
-                    {highestEloDefeated && (
+                    {peakEloDefeated != null && !isNaN(Number(peakEloDefeated)) && (
                       <>
                         <div className="h-8 w-px bg-slate-800 hidden sm:block" />
                         <div className="text-right">
                           <div className="text-slate-500 text-[11px]">Peak Defeat</div>
                           <div className="text-sm font-bold text-amber-300">
-                            {Number(highestEloDefeated).toFixed(1)} ELO
+                            {Number(peakEloDefeated).toFixed(1)} ELO
                           </div>
+                          {peakDefeatedName && (
+                            <div className="text-[10px] text-slate-400 truncate max-w-[110px]" title={`Defeated ${peakDefeatedName}`}>
+                              vs {peakDefeatedName}
+                            </div>
+                          )}
                         </div>
                       </>
                     )}

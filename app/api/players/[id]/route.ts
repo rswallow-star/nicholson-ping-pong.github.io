@@ -113,9 +113,13 @@ export async function GET(
       totalPointsScored += myScore;
       totalPointsConceded += theirScore;
 
-      if (isWin && opponentElo) {
-        if (!highestEloDefeated || opponentElo > highestEloDefeated.elo) {
-          highestEloDefeated = { name: opponent.displayName, elo: opponentElo };
+      const oppEloDefeated = opponentElo ?? opponentCurrentElo;
+      if (isWin && oppEloDefeated) {
+        if (!highestEloDefeated || oppEloDefeated > highestEloDefeated.elo) {
+          highestEloDefeated = {
+            name: opponent.displayName,
+            elo: Math.round(oppEloDefeated * 10) / 10,
+          };
         }
       }
 
@@ -244,6 +248,7 @@ export async function GET(
         avgOpponentElo,
         opponentDifficulty: avgOpponentElo,
         smoothedWinRate: Math.round(smoothedWinRate * 1000) / 10,
+        highestEloDefeated,
         totalPointsFor: totalPointsScored,
         totalPointsAgainst: totalPointsConceded,
         pointDifferential,
