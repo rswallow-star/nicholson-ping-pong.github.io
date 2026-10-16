@@ -178,6 +178,10 @@ export async function GET(
       highestWinStreak = user.rating.currentStreak;
     }
 
+    const pointDifferential = totalPointsScored - totalPointsConceded;
+    const avgPointsConceded =
+      totalGames > 0 ? (totalPointsConceded / totalGames).toFixed(1) : "0.0";
+
     return NextResponse.json({
       player: {
         id: user.id,
@@ -193,12 +197,21 @@ export async function GET(
         highestWinStreak,
         peakWinStreak: highestWinStreak,
         winRate,
+        totalPointsFor: totalPointsScored,
+        totalPointsAgainst: totalPointsConceded,
+        pointDifferential,
+        avgPointsScored,
+        avgPointsConceded,
         registeredAt: user.createdAt,
       },
       analytics: {
         gamesTo21: { wins: gamesTo21Wins, losses: gamesTo21Losses },
         gamesTo11: { wins: gamesTo11Wins, losses: gamesTo11Losses },
+        totalPointsFor: totalPointsScored,
+        totalPointsAgainst: totalPointsConceded,
+        pointDifferential,
         avgPointsScored,
+        avgPointsConceded,
         highestEloDefeated,
         highestWinStreak,
         peakWinStreak: highestWinStreak,
