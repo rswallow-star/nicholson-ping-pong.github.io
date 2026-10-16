@@ -24,8 +24,8 @@ export async function GET(req: Request) {
       );
     }
 
-    // Fetch both players with their rating records
-    const [p1, p2] = await Promise.all([
+    // Fetch both players with their rating records, plus all users and confirmed matches
+    const [p1, p2, allUsers, allMatches] = await Promise.all([
       prisma.user.findUnique({
         where: { id: p1Id },
         include: { rating: true },
@@ -33,6 +33,13 @@ export async function GET(req: Request) {
       prisma.user.findUnique({
         where: { id: p2Id },
         include: { rating: true },
+      }),
+      prisma.user.findMany({
+        include: { rating: true },
+      }),
+      prisma.match.findMany({
+        where: { status: "CONFIRMED" },
+        orderBy: { createdAt: "desc" },
       }),
     ]);
 
@@ -55,17 +62,12 @@ export async function GET(req: Request) {
     const rankP1 = higherRatedP1 + 1;
     const rankP2 = higherRatedP2 + 1;
 
-    // Fetch all confirmed head-to-head matches between p1 and p2
-    const h2hMatches = await prisma.match.findMany({
-      where: {
-        status: "CONFIRMED",
-        OR: [
-          { submitterId: p1Id, opponentId: p2Id },
-          { submitterId: p2Id, opponentId: p1Id },
-        ],
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    // Filter all confirmed head-to-head matches between p1 and p2
+    const h2hMatches = allMatches.filter(
+      (m) =>
+        (m.submitterId === p1Id && m.opponentId === p2Id) ||
+        (m.submitterId === p2Id && m.opponentId === p1Id)
+    );
 
     let p1H2hWins = 0;
     let p2H2hWins = 0;
@@ -100,33 +102,102 @@ export async function GET(req: Request) {
     });
 
     const h2hTotal = h2hMatches.length;
+    const hasH2h = h2hTotal > 0;
 
-    // 1. Pure ELO Win Expectation (standard logistic distribution)
+    // 1. ELO Expected Win Probability
     const eloP1 = p1.rating?.currentElo ?? 1200;
     const eloP2 = p2.rating?.currentElo ?? 1200;
     const eloExpectedP1 = getExpectedScore(eloP1, eloP2);
     const eloExpectedP2 = 1.0 - eloExpectedP1;
 
-    // 2. Head-to-Head Win Rate & Bayesian Blending
+    // 2. Opponent Quality & Strength of Schedule (performance against other players)
+    // Calculates average opponent difficulty and quality score for each player
+    const computeOpponentQuality = (playerId: string, rivalId: string) => {
+      let otherMatches = allMatches.filter(
+        (m) =>
+          (m.submitterId === playerId || m.opponentId === playerId) &&
+          m.submitterId !== rivalId &&
+          m.opponentId !== rivalId
+      );
+
+      // Fallback if they have only ever played each other
+      if (otherMatches.length === 0) {
+        otherMatches = allMatches.filter(
+          (m) => m.submitterId === playerId || m.opponentId === playerId
+        );
+      }
+
+      let wins = 0;
+      let totalOppElo = 0;
+
+      for (const m of otherMatches) {
+        const isSub = m.submitterId === playerId;
+        const myScore = isSub ? m.submitterScore : m.opponentScore;
+        const theirScore = isSub ? m.opponentScore : m.submitterScore;
+        const isWin = myScore > theirScore;
+        const oppId = isSub ? m.opponentId : m.submitterId;
+        const oppUser = allUsers.find((u) => u.id === oppId);
+        const oppElo = oppUser?.rating?.currentElo ?? 1200;
+
+        totalOppElo += oppElo;
+        if (isWin) wins++;
+      }
+
+      const count = otherMatches.length;
+      const losses = count - wins;
+      const avgOppElo = count > 0 ? Math.round((totalOppElo / count) * 10) / 10 : 1200.0;
+      const rawWinRate = count > 0 ? Math.round((wins / count) * 1000) / 10 : 0;
+      // Bayesian smoothed win rate (smooths small samples towards 50%)
+      const smoothedWinRate = (wins + 1) / (count + 2);
+      // Quality score = smoothed win rate * average opponent difficulty
+      const qualityScore = Math.round(smoothedWinRate * avgOppElo * 10) / 10;
+
+      return {
+        matchesCount: count,
+        wins,
+        losses,
+        rawWinRate,
+        avgOpponentElo: avgOppElo,
+        difficultyScore: avgOppElo,
+        difficultyMultiplier: Math.round((avgOppElo / 1200) * 100) / 100,
+        qualityScore,
+      };
+    };
+
+    const q1 = computeOpponentQuality(p1Id, p2Id);
+    const q2 = computeOpponentQuality(p2Id, p1Id);
+
+    const qualityRatioP1 = q1.qualityScore / (q1.qualityScore + q2.qualityScore);
+    const qualityRatioP2 = 1.0 - qualityRatioP1;
+
+    // 3. User Weighting Algorithm:
+    // If H2H > 0: 50% Head-to-Head + 25% ELO + 25% Opponent Quality
+    // If H2H == 0: 50% ELO + 50% Opponent Quality
     let winChanceP1: number;
     let winChanceP2: number;
+    let h2hWinRateP1 = 0.5;
 
-    if (h2hTotal === 0) {
-      // No past matches: 100% based on ELO skill probability
-      winChanceP1 = Math.round(eloExpectedP1 * 1000) / 10;
-      winChanceP2 = Math.round(eloExpectedP2 * 1000) / 10;
+    if (hasH2h) {
+      // H2H rate with slight Bayesian smoothing for small sample sizes
+      h2hWinRateP1 = (p1H2hWins + 0.5) / (h2hTotal + 1);
+
+      const blendedP1 =
+        0.50 * h2hWinRateP1 +
+        0.25 * eloExpectedP1 +
+        0.25 * qualityRatioP1;
+
+      winChanceP1 = Math.round(blendedP1 * 1000) / 10;
+      winChanceP2 = Math.round((1.0 - blendedP1) * 1000) / 10;
     } else {
-      // Historical win rate
-      const h2hRateP1 = p1H2hWins / h2hTotal;
+      const blendedP1 = 0.50 * eloExpectedP1 + 0.50 * qualityRatioP1;
 
-      // As sample size increases (up to 10 games), weight H2H history up to 50%
-      const h2hWeight = Math.min(0.5, (h2hTotal / 10) * 0.5);
-      const eloWeight = 1.0 - h2hWeight;
-
-      const blendedP1 = eloWeight * eloExpectedP1 + h2hWeight * h2hRateP1;
       winChanceP1 = Math.round(blendedP1 * 1000) / 10;
       winChanceP2 = Math.round((1.0 - blendedP1) * 1000) / 10;
     }
+
+    // Keep within reasonable bounds [1%, 99%] and perfectly sum to 100%
+    winChanceP1 = Math.max(1, Math.min(99, winChanceP1));
+    winChanceP2 = Math.round((100 - winChanceP1) * 10) / 10;
 
     // Helper for player summary
     const buildPlayerSummary = (user: typeof p1, rank: number) => {
@@ -157,15 +228,38 @@ export async function GET(req: Request) {
       prediction: {
         winChanceP1,
         winChanceP2,
-        eloExpectedP1: Math.round(eloExpectedP1 * 1000) / 10,
-        eloExpectedP2: Math.round(eloExpectedP2 * 1000) / 10,
+        hasH2h,
         h2hMatchesCount: h2hTotal,
         p1H2hWins,
         p2H2hWins,
-        methodology:
-          h2hTotal === 0
-            ? "Predicted purely via ELO rating disparity (no mutual match history yet)."
-            : `Blended from general ELO disparity and ${h2hTotal} past head-to-head meeting(s).`,
+        weights: hasH2h
+          ? { h2h: "50%", elo: "25%", opponentQuality: "25%" }
+          : { h2h: "0%", elo: "50%", opponentQuality: "50%" },
+        factors: {
+          elo: {
+            p1: Math.round(eloExpectedP1 * 1000) / 10,
+            p2: Math.round(eloExpectedP2 * 1000) / 10,
+          },
+          h2h: hasH2h
+            ? {
+                p1: Math.round(h2hWinRateP1 * 1000) / 10,
+                p2: Math.round((1 - h2hWinRateP1) * 1000) / 10,
+              }
+            : null,
+          opponentQuality: {
+            p1: Math.round(qualityRatioP1 * 1000) / 10,
+            p2: Math.round(qualityRatioP2 * 1000) / 10,
+          },
+        },
+        opponentStrength: {
+          p1: q1,
+          p2: q2,
+        },
+        eloExpectedP1: Math.round(eloExpectedP1 * 1000) / 10,
+        eloExpectedP2: Math.round(eloExpectedP2 * 1000) / 10,
+        methodology: hasH2h
+          ? `Weighted 50% on Head-to-Head record, 25% on ELO difference, and 25% on Opponent Difficulty & record against other dorm opponents.`
+          : `No head-to-head matches yet. Weighted 50% on ELO difference and 50% on Opponent Difficulty & record against other dorm players.`,
       },
       headToHead: {
         matches: formattedMatches,
