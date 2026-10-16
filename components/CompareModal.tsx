@@ -232,17 +232,75 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                   />
                 </div>
 
-                {/* Subtext explaining calculation */}
-                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
-                  <span className="flex items-center gap-1">
-                    <TrendingUp className="w-3.5 h-3.5 text-slate-500" />
-                    ELO Odds: {data.prediction.eloExpectedP1}% vs {data.prediction.eloExpectedP2}%
-                  </span>
-                  <span>
-                    H2H Record: <strong className="text-emerald-400">{data.prediction.p1H2hWins}W</strong> – <strong className="text-purple-400">{data.prediction.p2H2hWins}W</strong>
-                  </span>
+                {/* 3-Factor Breakdown Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 my-3">
+                  {/* Factor 1: Head-to-Head */}
+                  <div
+                    className={`p-2.5 rounded-xl border ${
+                      data.prediction.hasH2h
+                        ? "bg-slate-900/90 border-slate-700/80"
+                        : "bg-slate-900/40 border-slate-800/40 opacity-60"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 mb-1">
+                      <span>Head-to-Head</span>
+                      <span className="font-mono text-amber-400 font-bold">
+                        {data.prediction.weights?.h2h ?? (data.prediction.hasH2h ? "50%" : "0%")}
+                      </span>
+                    </div>
+                    {data.prediction.hasH2h ? (
+                      <div className="text-xs font-mono font-bold flex justify-between items-center">
+                        <span className="text-emerald-400">{data.prediction.p1H2hWins}W</span>
+                        <span className="text-slate-500 font-normal text-[10px]">
+                          ({data.prediction.h2hMatchesCount} played)
+                        </span>
+                        <span className="text-purple-400">{data.prediction.p2H2hWins}W</span>
+                      </div>
+                    ) : (
+                      <div className="text-[11px] text-slate-500 italic">No matches yet</div>
+                    )}
+                  </div>
+
+                  {/* Factor 2: ELO Rating */}
+                  <div className="p-2.5 rounded-xl border bg-slate-900/90 border-slate-700/80">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 mb-1">
+                      <span>ELO Rating</span>
+                      <span className="font-mono text-sky-400 font-bold">
+                        {data.prediction.weights?.elo ?? (data.prediction.hasH2h ? "25%" : "50%")}
+                      </span>
+                    </div>
+                    <div className="text-xs font-mono font-bold flex justify-between items-center">
+                      <span className="text-emerald-400">
+                        {data.prediction.factors?.elo?.p1 ?? data.prediction.eloExpectedP1}%
+                      </span>
+                      <span className="text-slate-500 font-normal text-[10px]">expected</span>
+                      <span className="text-purple-400">
+                        {data.prediction.factors?.elo?.p2 ?? data.prediction.eloExpectedP2}%
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Factor 3: Opponent Difficulty & Record against Others */}
+                  <div className="p-2.5 rounded-xl border bg-slate-900/90 border-slate-700/80">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 mb-1">
+                      <span>Opponent Quality</span>
+                      <span className="font-mono text-emerald-400 font-bold">
+                        {data.prediction.weights?.opponentQuality ?? (data.prediction.hasH2h ? "25%" : "50%")}
+                      </span>
+                    </div>
+                    <div className="text-xs font-mono font-bold flex justify-between items-center">
+                      <span className="text-emerald-400">
+                        {data.prediction.factors?.opponentQuality?.p1 ?? "—"}%
+                      </span>
+                      <span className="text-slate-500 font-normal text-[10px]">vs field</span>
+                      <span className="text-purple-400">
+                        {data.prediction.factors?.opponentQuality?.p2 ?? "—"}%
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-[10px] text-slate-500 italic mt-1.5">
+
+                <p className="text-[10px] text-slate-500 italic mt-1 border-t border-slate-800/80 pt-2">
                   *{data.prediction.methodology}
                 </p>
               </div>
@@ -377,6 +435,67 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                       )}
                     </span>
                   </div>
+
+                  {/* Opponent Difficulty & Strength of Schedule */}
+                  {data.prediction.opponentStrength && (
+                    <>
+                      <div className="py-2.5 px-4 flex items-center justify-between font-mono">
+                        <span className="text-slate-300">
+                          {data.prediction.opponentStrength.p1.avgOpponentElo.toFixed(1)} ELO
+                        </span>
+                        <span className="text-xs font-sans text-slate-400" title="Average rating of opponents faced">
+                          Opponent Difficulty
+                        </span>
+                        <span className="text-slate-300 text-right">
+                          {data.prediction.opponentStrength.p2.avgOpponentElo.toFixed(1)} ELO
+                        </span>
+                      </div>
+
+                      <div className="py-2.5 px-4 flex items-center justify-between font-mono">
+                        <span className="text-slate-300">
+                          {data.prediction.opponentStrength.p1.wins}W – {data.prediction.opponentStrength.p1.losses}L
+                          <span className="text-slate-500 text-xs ml-1">
+                            ({data.prediction.opponentStrength.p1.rawWinRate}%)
+                          </span>
+                        </span>
+                        <span className="text-xs font-sans text-slate-400" title="Record against all other dorm players">
+                          Record vs Others
+                        </span>
+                        <span className="text-slate-300 text-right">
+                          {data.prediction.opponentStrength.p2.wins}W – {data.prediction.opponentStrength.p2.losses}L
+                          <span className="text-slate-500 text-xs ml-1">
+                            ({data.prediction.opponentStrength.p2.rawWinRate}%)
+                          </span>
+                        </span>
+                      </div>
+
+                      <div className="py-2.5 px-4 flex items-center justify-between font-mono">
+                        <span
+                          className={`font-bold ${
+                            data.prediction.opponentStrength.p1.qualityScore >=
+                            data.prediction.opponentStrength.p2.qualityScore
+                              ? "text-emerald-400 font-black"
+                              : "text-slate-300"
+                          }`}
+                        >
+                          {data.prediction.opponentStrength.p1.qualityScore.toFixed(0)}
+                        </span>
+                        <span className="text-xs font-sans text-slate-400" title="Win Rate adjusted by Opponent Difficulty">
+                          Quality Index
+                        </span>
+                        <span
+                          className={`font-bold text-right ${
+                            data.prediction.opponentStrength.p2.qualityScore >=
+                            data.prediction.opponentStrength.p1.qualityScore
+                              ? "text-purple-400 font-black"
+                              : "text-slate-300"
+                          }`}
+                        >
+                          {data.prediction.opponentStrength.p2.qualityScore.toFixed(0)}
+                        </span>
+                      </div>
+                    </>
+                  )}
 
                   {/* Dorm Room */}
                   <div className="py-2.5 px-4 flex items-center justify-between text-xs text-slate-400 font-mono">
