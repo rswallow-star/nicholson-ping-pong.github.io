@@ -377,6 +377,11 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                     <div className="text-[11px] text-slate-400">
                       {g21Pct}% Win Rate ({g21Total} matches)
                     </div>
+                    {data.analytics.gamesTo21.avgPointsScored && (
+                      <div className="text-[10px] text-purple-400 font-mono mt-0.5">
+                        Avg: {data.analytics.gamesTo21.avgPointsScored} pts / gm
+                      </div>
+                    )}
                   </div>
 
                   {/* Card 4: Games to 11 */}
@@ -391,6 +396,11 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                     <div className="text-[11px] text-slate-400">
                       {g11Pct}% Win Rate ({g11Total} matches)
                     </div>
+                    {data.analytics.gamesTo11.avgPointsScored && (
+                      <div className="text-[10px] text-sky-400 font-mono mt-0.5">
+                        Avg: {data.analytics.gamesTo11.avgPointsScored} pts / gm
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -409,9 +419,47 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                 data.recentMatches?.reduce((sum: number, m: any) => sum + (m.theirScore || 0), 0) ??
                 0;
               const pointDiff = ptsFor - ptsAgainst;
-              const matchCount = (data.player?.wins ?? 0) + (data.player?.losses ?? 0) || 1;
-              const avgFor = (ptsFor / matchCount).toFixed(1);
-              const avgAgainst = (ptsAgainst / matchCount).toFixed(1);
+
+              // Separate format averages
+              const recent21 = Array.isArray(data.recentMatches)
+                ? data.recentMatches.filter((m: any) => !m.isGameTo11)
+                : [];
+              const recent11 = Array.isArray(data.recentMatches)
+                ? data.recentMatches.filter((m: any) => m.isGameTo11)
+                : [];
+
+              const count21 =
+                data.analytics?.gamesTo21 ? data.analytics.gamesTo21.wins + data.analytics.gamesTo21.losses : recent21.length;
+              const count11 =
+                data.analytics?.gamesTo11 ? data.analytics.gamesTo11.wins + data.analytics.gamesTo11.losses : recent11.length;
+
+              const pts21For =
+                data.analytics?.gamesTo21?.pointsScored ??
+                recent21.reduce((sum: number, m: any) => sum + (m.myScore || 0), 0);
+              const pts21Against =
+                data.analytics?.gamesTo21?.pointsConceded ??
+                recent21.reduce((sum: number, m: any) => sum + (m.theirScore || 0), 0);
+
+              const pts11For =
+                data.analytics?.gamesTo11?.pointsScored ??
+                recent11.reduce((sum: number, m: any) => sum + (m.myScore || 0), 0);
+              const pts11Against =
+                data.analytics?.gamesTo11?.pointsConceded ??
+                recent11.reduce((sum: number, m: any) => sum + (m.theirScore || 0), 0);
+
+              const avg21For =
+                data.player?.avgPoints21Scored ??
+                (count21 > 0 ? (pts21For / count21).toFixed(1) : "—");
+              const avg21Against =
+                data.player?.avgPoints21Conceded ??
+                (count21 > 0 ? (pts21Against / count21).toFixed(1) : "—");
+
+              const avg11For =
+                data.player?.avgPoints11Scored ??
+                (count11 > 0 ? (pts11For / count11).toFixed(1) : "—");
+              const avg11Against =
+                data.player?.avgPoints11Conceded ??
+                (count11 > 0 ? (pts11Against / count11).toFixed(1) : "—");
 
               return (
                 <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
@@ -429,18 +477,29 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 text-xs font-mono">
+                  <div className="flex flex-wrap items-center gap-4 text-xs font-mono">
                     <div className="text-right">
-                      <div className="text-slate-500 text-[11px]">Point Differential</div>
+                      <div className="text-slate-500 text-[11px]">Differential</div>
                       <div className={`text-base font-black ${pointDiff >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                         {pointDiff > 0 ? `+${pointDiff}` : pointDiff} pts
                       </div>
                     </div>
                     <div className="h-8 w-px bg-slate-800 hidden sm:block" />
-                    <div className="text-right hidden sm:block">
-                      <div className="text-slate-500 text-[11px]">Avg / Match</div>
+                    <div className="text-right">
+                      <div className="text-purple-400 text-[11px] font-semibold flex items-center gap-1 justify-end">
+                        <Trophy className="w-3 h-3" /> 21-pt Match Avg
+                      </div>
                       <div className="text-slate-200 font-bold">
-                        {avgFor} scored / {avgAgainst} conceded
+                        {avg21For !== "—" ? `${avg21For} scored / ${avg21Against} conceded` : "No 21-pt games"}
+                      </div>
+                    </div>
+                    <div className="h-8 w-px bg-slate-800 hidden sm:block" />
+                    <div className="text-right">
+                      <div className="text-sky-400 text-[11px] font-semibold flex items-center gap-1 justify-end">
+                        <Zap className="w-3 h-3" /> 11-pt Match Avg
+                      </div>
+                      <div className="text-slate-200 font-bold">
+                        {avg11For !== "—" ? `${avg11For} scored / ${avg11Against} conceded` : "No 11-pt games"}
                       </div>
                     </div>
                   </div>
