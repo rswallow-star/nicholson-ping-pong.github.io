@@ -4,6 +4,88 @@ import { getExpectedScore } from "@/lib/elo";
 
 export const dynamic = "force-dynamic";
 
+// Combination function nCr
+function nCr(n: number, r: number): number {
+  if (r < 0 || r > n) return 0;
+  if (r === 0 || r === n) return 1;
+  let c = 1;
+  for (let i = 1; i <= r; i++) {
+    c = (c * (n - (r - i))) / i;
+  }
+  return c;
+}
+
+// Simulates the full probability distribution of all possible ping-pong scorelines
+function simulateScoreDistribution(p: number, target: 11 | 21) {
+  const q = 1 - p;
+  const deuceAt = target - 1; // 10 for 11, 20 for 21
+
+  const outcomes: Array<{
+    scoreA: number;
+    scoreB: number;
+    prob: number;
+  }> = [];
+
+  let probAWins = 0;
+  let probBWins = 0;
+  let expPointsA = 0;
+  let expPointsB = 0;
+
+  // 1. Regular non-deuce scores (0 .. target - 2)
+  for (let k = 0; k <= target - 2; k++) {
+    const probA = nCr(target - 1 + k, k) * Math.pow(p, target) * Math.pow(q, k);
+    outcomes.push({ scoreA: target, scoreB: k, prob: probA });
+    probAWins += probA;
+    expPointsA += target * probA;
+    expPointsB += k * probA;
+
+    const probB = nCr(target - 1 + k, k) * Math.pow(q, target) * Math.pow(p, k);
+    outcomes.push({ scoreA: k, scoreB: target, prob: probB });
+    probBWins += probB;
+    expPointsA += k * probB;
+    expPointsB += target * probB;
+  }
+
+  // 2. Deuce outcomes (reaching deuceAt - deuceAt)
+  const probDeuce = nCr(2 * deuceAt, deuceAt) * Math.pow(p, deuceAt) * Math.pow(q, deuceAt);
+  const pDenom = Math.pow(p, 2) + Math.pow(q, 2);
+  const deuceWinProbA = probDeuce * (pDenom > 0 ? Math.pow(p, 2) / pDenom : 0.5);
+  const deuceWinProbB = probDeuce * (pDenom > 0 ? Math.pow(q, 2) / pDenom : 0.5);
+
+  probAWins += deuceWinProbA;
+  probBWins += deuceWinProbB;
+
+  // Add primary overtime scorelines
+  const deuceScores = [
+    { a: target + 1, b: target - 1, m: 0 },
+    { a: target + 2, b: target, m: 1 },
+    { a: target + 3, b: target + 1, m: 2 },
+  ];
+
+  for (const ds of deuceScores) {
+    const probA_ds = probDeuce * Math.pow(2 * p * q, ds.m) * Math.pow(p, 2);
+    outcomes.push({ scoreA: ds.a, scoreB: ds.b, prob: probA_ds });
+    expPointsA += ds.a * probA_ds;
+    expPointsB += ds.b * probA_ds;
+
+    const probB_ds = probDeuce * Math.pow(2 * p * q, ds.m) * Math.pow(q, 2);
+    outcomes.push({ scoreA: ds.b, scoreB: ds.a, prob: probB_ds });
+    expPointsA += ds.b * probB_ds;
+    expPointsB += ds.a * probB_ds;
+  }
+
+  outcomes.sort((a, b) => b.prob - a.prob);
+  const mostLikely = outcomes[0] || { scoreA: target, scoreB: Math.round(target * 0.75), prob: 0.15 };
+
+  return {
+    probAWins,
+    probBWins,
+    expPointsA,
+    expPointsB,
+    mostLikelyScore: mostLikely,
+  };
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -71,8 +153,8 @@ export async function GET(req: Request) {
 
     let p1H2hWins = 0;
     let p2H2hWins = 0;
-    let p1TotalPoints = 0;
-    let p2TotalPoints = 0;
+    let p1H2hPoints = 0;
+    let p2H2hPoints = 0;
 
     const formattedMatches = h2hMatches.map((m) => {
       const isP1Submitter = m.submitterId === p1Id;
@@ -83,8 +165,8 @@ export async function GET(req: Request) {
       if (winnerId === p1Id) p1H2hWins++;
       else p2H2hWins++;
 
-      p1TotalPoints += p1Score;
-      p2TotalPoints += p2Score;
+      p1H2hPoints += p1Score;
+      p2H2hPoints += p2Score;
 
       const is11 =
         (m.notes && m.notes.includes("[Game to 11]")) ||
@@ -104,14 +186,39 @@ export async function GET(req: Request) {
     const h2hTotal = h2hMatches.length;
     const hasH2h = h2hTotal > 0;
 
+    // Career Points Calculation across all confirmed matches
+    const getCareerPoints = (playerId: string) => {
+      const pMatches = allMatches.filter(
+        (m) => m.submitterId === playerId || m.opponentId === playerId
+      );
+      let ptsFor = 0;
+      let ptsAgainst = 0;
+      for (const m of pMatches) {
+        const isSub = m.submitterId === playerId;
+        ptsFor += isSub ? m.submitterScore : m.opponentScore;
+        ptsAgainst += isSub ? m.opponentScore : m.submitterScore;
+      }
+      const count = pMatches.length;
+      return {
+        matchesCount: count,
+        pointsFor: ptsFor,
+        pointsAgainst: ptsAgainst,
+        pointDiff: ptsFor - ptsAgainst,
+        avgPointsFor: count > 0 ? (ptsFor / count).toFixed(1) : "0.0",
+        avgPointsAgainst: count > 0 ? (ptsAgainst / count).toFixed(1) : "0.0",
+      };
+    };
+
+    const p1Career = getCareerPoints(p1Id);
+    const p2Career = getCareerPoints(p2Id);
+
     // 1. ELO Expected Win Probability
     const eloP1 = p1.rating?.currentElo ?? 1200;
     const eloP2 = p2.rating?.currentElo ?? 1200;
     const eloExpectedP1 = getExpectedScore(eloP1, eloP2);
     const eloExpectedP2 = 1.0 - eloExpectedP1;
 
-    // 2. Opponent Quality & Strength of Schedule (performance against other players)
-    // Calculates average opponent difficulty and quality score for each player
+    // 2. Opponent Quality & Strength of Schedule (against other players)
     const computeOpponentQuality = (playerId: string, rivalId: string) => {
       let otherMatches = allMatches.filter(
         (m) =>
@@ -120,7 +227,6 @@ export async function GET(req: Request) {
           m.opponentId !== rivalId
       );
 
-      // Fallback if they have only ever played each other
       if (otherMatches.length === 0) {
         otherMatches = allMatches.filter(
           (m) => m.submitterId === playerId || m.opponentId === playerId
@@ -129,6 +235,8 @@ export async function GET(req: Request) {
 
       let wins = 0;
       let totalOppElo = 0;
+      let otherPtsFor = 0;
+      let otherPtsAgainst = 0;
 
       for (const m of otherMatches) {
         const isSub = m.submitterId === playerId;
@@ -140,6 +248,8 @@ export async function GET(req: Request) {
         const oppElo = oppUser?.rating?.currentElo ?? 1200;
 
         totalOppElo += oppElo;
+        otherPtsFor += myScore;
+        otherPtsAgainst += theirScore;
         if (isWin) wins++;
       }
 
@@ -147,9 +257,7 @@ export async function GET(req: Request) {
       const losses = count - wins;
       const avgOppElo = count > 0 ? Math.round((totalOppElo / count) * 10) / 10 : 1200.0;
       const rawWinRate = count > 0 ? Math.round((wins / count) * 1000) / 10 : 0;
-      // Bayesian smoothed win rate (smooths small samples towards 50%)
       const smoothedWinRate = (wins + 1) / (count + 2);
-      // Quality score = smoothed win rate * average opponent difficulty
       const qualityScore = Math.round(smoothedWinRate * avgOppElo * 10) / 10;
 
       return {
@@ -157,6 +265,8 @@ export async function GET(req: Request) {
         wins,
         losses,
         rawWinRate,
+        otherPtsFor,
+        otherPtsAgainst,
         avgOpponentElo: avgOppElo,
         difficultyScore: avgOppElo,
         difficultyMultiplier: Math.round((avgOppElo / 1200) * 100) / 100,
@@ -170,37 +280,74 @@ export async function GET(req: Request) {
     const qualityRatioP1 = q1.qualityScore / (q1.qualityScore + q2.qualityScore);
     const qualityRatioP2 = 1.0 - qualityRatioP1;
 
-    // 3. User Weighting Algorithm:
-    // If H2H > 0: 50% Head-to-Head + 25% ELO + 25% Opponent Quality
-    // If H2H == 0: 50% ELO + 50% Opponent Quality
-    let winChanceP1: number;
-    let winChanceP2: number;
-    let h2hWinRateP1 = 0.5;
+    // 3. Probabilistic Score Distribution Model:
+    // Estimate per-point win probability for Player 1 (pPoint)
+    // a) From H2H point history
+    const pH2hPoints = hasH2h
+      ? (p1H2hPoints + 1) / (p1H2hPoints + p2H2hPoints + 2)
+      : 0.50;
 
+    // b) From career point share adjusted for opponent difficulty
+    const p1PointShare = (p1Career.pointsFor + 1) / (p1Career.pointsFor + p1Career.pointsAgainst + 2);
+    const p2PointShare = (p2Career.pointsFor + 1) / (p2Career.pointsFor + p2Career.pointsAgainst + 2);
+    const adjShareP1 = p1PointShare * Math.sqrt(q1.avgOpponentElo / 1200);
+    const adjShareP2 = p2PointShare * Math.sqrt(q2.avgOpponentElo / 1200);
+    const pCareerPointProb = adjShareP1 / (adjShareP1 + adjShareP2);
+
+    // c) From ELO point-level expectancy
+    const pEloPointProb = 1 / (1 + Math.pow(10, (eloP2 - eloP1) / 800));
+
+    // Blended per-point probability (p)
+    let pPoint: number;
     if (hasH2h) {
-      // H2H rate with slight Bayesian smoothing for small sample sizes
-      h2hWinRateP1 = (p1H2hWins + 0.5) / (h2hTotal + 1);
-
-      const blendedP1 =
-        0.50 * h2hWinRateP1 +
-        0.25 * eloExpectedP1 +
-        0.25 * qualityRatioP1;
-
-      winChanceP1 = Math.round(blendedP1 * 1000) / 10;
-      winChanceP2 = Math.round((1.0 - blendedP1) * 1000) / 10;
+      pPoint = 0.50 * pH2hPoints + 0.30 * pCareerPointProb + 0.20 * pEloPointProb;
     } else {
-      const blendedP1 = 0.50 * eloExpectedP1 + 0.50 * qualityRatioP1;
-
-      winChanceP1 = Math.round(blendedP1 * 1000) / 10;
-      winChanceP2 = Math.round((1.0 - blendedP1) * 1000) / 10;
+      pPoint = 0.60 * pCareerPointProb + 0.40 * pEloPointProb;
     }
 
-    // Keep within reasonable bounds [1%, 99%] and perfectly sum to 100%
+    // Keep point win rate within realistic bounds [0.30, 0.70]
+    pPoint = Math.max(0.30, Math.min(0.70, pPoint));
+
+    // Run scoreline simulations for Game to 21 and Game to 11
+    const sim21 = simulateScoreDistribution(pPoint, 21);
+    const sim11 = simulateScoreDistribution(pPoint, 11);
+
+    // Win probability directly derived from the score distribution model
+    const scoreModelWinChanceP1 = sim21.probAWins;
+
+    // 4. Master Win Probability Combination:
+    // User requested the Score Distribution Probability Model weigh in more heavily than the rest
+    let winChanceP1: number;
+    let winChanceP2: number;
+
+    if (hasH2h) {
+      const h2hWinRateP1 = (p1H2hWins + 0.5) / (h2hTotal + 1);
+      // 50% Score Distribution Model, 20% Direct H2H, 15% ELO, 15% Opponent Quality
+      const rawPrediction =
+        0.50 * scoreModelWinChanceP1 +
+        0.20 * h2hWinRateP1 +
+        0.15 * eloExpectedP1 +
+        0.15 * qualityRatioP1;
+
+      winChanceP1 = Math.round(rawPrediction * 1000) / 10;
+      winChanceP2 = Math.round((1.0 - rawPrediction) * 1000) / 10;
+    } else {
+      // 60% Score Distribution Model, 20% ELO, 20% Opponent Quality
+      const rawPrediction =
+        0.60 * scoreModelWinChanceP1 +
+        0.20 * eloExpectedP1 +
+        0.20 * qualityRatioP1;
+
+      winChanceP1 = Math.round(rawPrediction * 1000) / 10;
+      winChanceP2 = Math.round((1.0 - rawPrediction) * 1000) / 10;
+    }
+
+    // Bounds & normalization
     winChanceP1 = Math.max(1, Math.min(99, winChanceP1));
     winChanceP2 = Math.round((100 - winChanceP1) * 10) / 10;
 
     // Helper for player summary
-    const buildPlayerSummary = (user: typeof p1, rank: number) => {
+    const buildPlayerSummary = (user: typeof p1, rank: number, career: typeof p1Career) => {
       const wins = user.rating?.wins ?? 0;
       const losses = user.rating?.losses ?? 0;
       const total = wins + losses;
@@ -218,13 +365,18 @@ export async function GET(req: Request) {
         matchesPlayed: user.rating?.matchesPlayed ?? 0,
         winRate,
         currentStreak: user.rating?.currentStreak ?? 0,
+        totalPointsFor: career.pointsFor,
+        totalPointsAgainst: career.pointsAgainst,
+        pointDifferential: career.pointDiff,
+        avgPointsFor: career.avgPointsFor,
+        avgPointsAgainst: career.avgPointsAgainst,
         isProvisional: total < 10,
       };
     };
 
     return NextResponse.json({
-      player1: buildPlayerSummary(p1, rankP1),
-      player2: buildPlayerSummary(p2, rankP2),
+      player1: buildPlayerSummary(p1, rankP1, p1Career),
+      player2: buildPlayerSummary(p2, rankP2, p2Career),
       prediction: {
         winChanceP1,
         winChanceP2,
@@ -232,24 +384,29 @@ export async function GET(req: Request) {
         h2hMatchesCount: h2hTotal,
         p1H2hWins,
         p2H2hWins,
-        weights: hasH2h
-          ? { h2h: "50%", elo: "25%", opponentQuality: "25%" }
-          : { h2h: "0%", elo: "50%", opponentQuality: "50%" },
-        factors: {
-          elo: {
-            p1: Math.round(eloExpectedP1 * 1000) / 10,
-            p2: Math.round(eloExpectedP2 * 1000) / 10,
+        projectedMatch: {
+          game21: {
+            predictedScoreP1: sim21.mostLikelyScore.scoreA,
+            predictedScoreP2: sim21.mostLikelyScore.scoreB,
+            projectedPointsP1: Math.round(sim21.expPointsA * 10) / 10,
+            projectedPointsP2: Math.round(sim21.expPointsB * 10) / 10,
+            likelihood: Math.round(sim21.mostLikelyScore.prob * 1000) / 10,
           },
-          h2h: hasH2h
-            ? {
-                p1: Math.round(h2hWinRateP1 * 1000) / 10,
-                p2: Math.round((1 - h2hWinRateP1) * 1000) / 10,
-              }
-            : null,
-          opponentQuality: {
-            p1: Math.round(qualityRatioP1 * 1000) / 10,
-            p2: Math.round(qualityRatioP2 * 1000) / 10,
+          game11: {
+            predictedScoreP1: sim11.mostLikelyScore.scoreA,
+            predictedScoreP2: sim11.mostLikelyScore.scoreB,
+            projectedPointsP1: Math.round(sim11.expPointsA * 10) / 10,
+            projectedPointsP2: Math.round(sim11.expPointsB * 10) / 10,
+            likelihood: Math.round(sim11.mostLikelyScore.prob * 1000) / 10,
           },
+        },
+        careerPoints: {
+          p1: p1Career,
+          p2: p2Career,
+        },
+        h2hPoints: {
+          p1: p1H2hPoints,
+          p2: p2H2hPoints,
         },
         opponentStrength: {
           p1: q1,
@@ -258,15 +415,17 @@ export async function GET(req: Request) {
         eloExpectedP1: Math.round(eloExpectedP1 * 1000) / 10,
         eloExpectedP2: Math.round(eloExpectedP2 * 1000) / 10,
         methodology: hasH2h
-          ? `Weighted 50% on Head-to-Head record, 25% on ELO difference, and 25% on Opponent Difficulty & record against other dorm opponents.`
-          : `No head-to-head matches yet. Weighted 50% on ELO difference and 50% on Opponent Difficulty & record against other dorm players.`,
+          ? `Driven by our Score Distribution Model (${Math.round(scoreModelWinChanceP1 * 100)}% projected odds), factored with Head-to-Head record, ELO disparity, and Opponent Difficulty.`
+          : `Driven by our Score Distribution Model (${Math.round(scoreModelWinChanceP1 * 100)}% projected odds), factored with ELO disparity and Opponent Difficulty.`,
       },
       headToHead: {
         matches: formattedMatches,
         p1Wins: p1H2hWins,
         p2Wins: p2H2hWins,
-        p1AvgPoints: h2hTotal > 0 ? (p1TotalPoints / h2hTotal).toFixed(1) : null,
-        p2AvgPoints: h2hTotal > 0 ? (p2TotalPoints / h2hTotal).toFixed(1) : null,
+        p1H2hPoints,
+        p2H2hPoints,
+        p1AvgPoints: h2hTotal > 0 ? (p1H2hPoints / h2hTotal).toFixed(1) : null,
+        p2AvgPoints: h2hTotal > 0 ? (p2H2hPoints / h2hTotal).toFixed(1) : null,
       },
     });
   } catch (error: any) {
