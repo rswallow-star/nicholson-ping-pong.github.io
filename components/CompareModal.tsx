@@ -190,8 +190,12 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                   <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-400">
                     <Sparkles className="w-4 h-4 text-amber-400" /> Predicted Win Probability
                   </div>
-                  <span className="text-[11px] text-slate-500 font-mono">
-                    {data.prediction.h2hMatchesCount} Past Meeting(s)
+                  <span className="text-[11px] text-slate-300 font-mono bg-slate-900/90 border border-slate-800 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                    <span className="text-slate-400">H2H:</span>
+                    <span className="text-emerald-400 font-bold">{data.headToHead?.p1Wins ?? 0}</span>
+                    <span className="text-slate-500">–</span>
+                    <span className="text-purple-400 font-bold">{data.headToHead?.p2Wins ?? 0}</span>
+                    <span className="text-slate-500 text-[10px]">({data.prediction.h2hMatchesCount} mtg{data.prediction.h2hMatchesCount === 1 ? "" : "s"})</span>
                   </span>
                 </div>
 
@@ -369,6 +373,35 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                     <span className="text-xs font-sans text-slate-400">Career Record</span>
                     <span className="text-slate-300 text-right">
                       {data.player2.wins}W – {data.player2.losses}L
+                    </span>
+                  </div>
+
+                  {/* Head-to-Head Match Record */}
+                  <div className="py-2.5 px-4 flex items-center justify-between font-mono bg-purple-950/15 border-y border-purple-500/20">
+                    <span
+                      className={`font-bold ${
+                        (data.headToHead?.p1Wins ?? 0) > (data.headToHead?.p2Wins ?? 0)
+                          ? "text-emerald-400 font-black"
+                          : (data.headToHead?.p1Wins ?? 0) < (data.headToHead?.p2Wins ?? 0)
+                          ? "text-slate-400"
+                          : "text-slate-300"
+                      }`}
+                    >
+                      {data.headToHead?.p1Wins ?? 0}W – {data.headToHead?.p2Wins ?? 0}L
+                    </span>
+                    <span className="text-xs font-sans text-purple-300 font-semibold" title="Head-to-head match record between these two players">
+                      H2H Record
+                    </span>
+                    <span
+                      className={`font-bold text-right ${
+                        (data.headToHead?.p2Wins ?? 0) > (data.headToHead?.p1Wins ?? 0)
+                          ? "text-purple-400 font-black"
+                          : (data.headToHead?.p2Wins ?? 0) < (data.headToHead?.p1Wins ?? 0)
+                          ? "text-slate-400"
+                          : "text-slate-300"
+                      }`}
+                    >
+                      {data.headToHead?.p2Wins ?? 0}W – {data.headToHead?.p1Wins ?? 0}L
                     </span>
                   </div>
 
@@ -646,8 +679,8 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
                     <Swords className="w-4 h-4 text-slate-400" /> Past Battles Between These Two
                   </h3>
-                  <span className="text-xs text-slate-500 font-mono">
-                    {data.headToHead.matches.length} match(es) played
+                  <span className="text-xs text-slate-400 font-mono bg-slate-950 px-2.5 py-0.5 rounded-full border border-slate-800">
+                    Series: <span className="text-emerald-400 font-bold">{data.headToHead.p1Wins}</span> – <span className="text-purple-400 font-bold">{data.headToHead.p2Wins}</span> ({data.headToHead.matches.length} total)
                   </span>
                 </div>
 
