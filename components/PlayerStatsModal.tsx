@@ -27,6 +27,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
+import { EditMatchModal } from "./EditMatchModal";
 
 interface PlayerStatsModalProps {
   playerId: string;
@@ -52,24 +53,25 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
   const [editRoom, setEditRoom] = useState("");
   const [saveLoading, setSaveLoading] = useState(false);
   const [editError, setEditError] = useState("");
+  const [selectedEditMatchId, setSelectedEditMatchId] = useState<string | null>(null);
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/players/${playerId}`);
+      if (!res.ok) {
+        throw new Error("Failed to load player stats.");
+      }
+      const json = await res.json();
+      setData(json);
+    } catch (err: any) {
+      setError(err.message || "Failed to load stats.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(`/api/players/${playerId}`);
-        if (!res.ok) {
-          throw new Error("Failed to load player stats.");
-        }
-        const json = await res.json();
-        setData(json);
-      } catch (err: any) {
-        setError(err.message || "Failed to load stats.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchStats();
   }, [playerId]);
 
@@ -792,6 +794,13 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                             </div>
                           )}
                         </div>
+                        <button
+                          onClick={() => setSelectedEditMatchId(m.id)}
+                          className="p-1.5 text-slate-500 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition border border-transparent hover:border-slate-700"
+                          title="Edit game scores or details"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -799,6 +808,20 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
               )}
             </div>
           </div>
+        )}
+
+        {/* Edit Match Modal */}
+        {selectedEditMatchId && (
+          <EditMatchModal
+            matchId={selectedEditMatchId}
+            onClose={() => setSelectedEditMatchId(null)}
+            onMatchUpdated={() => {
+              fetchStats();
+              if (onPlayerUpdated) {
+                onPlayerUpdated();
+              }
+            }}
+          />
         )}
       </div>
     </div>

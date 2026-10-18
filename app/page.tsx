@@ -15,9 +15,11 @@ import {
   Search,
   RefreshCw,
   Zap,
+  Pencil,
 } from "lucide-react";
 import { PlayerStatsModal } from "@/components/PlayerStatsModal";
 import { CompareModal } from "@/components/CompareModal";
+import { EditMatchModal } from "@/components/EditMatchModal";
 
 interface Player {
   id: string;
@@ -59,6 +61,12 @@ export default function HomePage() {
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [selectedEditMatchId, setSelectedEditMatchId] = useState<string | null>(null);
+
+  // Full match history state
+  const [showAllRecentMatches, setShowAllRecentMatches] = useState(false);
+  const [allMatchesList, setAllMatchesList] = useState<Match[]>([]);
+  const [loadingAllMatches, setLoadingAllMatches] = useState(false);
 
   // Match Form State
   const [gameType, setGameType] = useState<11 | 21>(21);
@@ -75,6 +83,21 @@ export default function HomePage() {
   const [newPlayerEmail, setNewPlayerEmail] = useState("");
   const [playerFormError, setPlayerFormError] = useState("");
 
+  const fetchAllMatches = async () => {
+    try {
+      setLoadingAllMatches(true);
+      const res = await fetch("/api/matches?status=CONFIRMED&limit=200");
+      if (res.ok) {
+        const data = await res.json();
+        setAllMatchesList(data.matches || []);
+      }
+    } catch (err) {
+      console.error("Failed to load all matches:", err);
+    } finally {
+      setLoadingAllMatches(false);
+    }
+  };
+
   const fetchData = async () => {
     try {
       const res = await fetch("/api/leaderboard", { cache: "no-store" });
@@ -83,6 +106,9 @@ export default function HomePage() {
         setPlayers(data.players || []);
         setPendingMatches(data.pendingMatches || []);
         setRecentMatches(data.recentMatches || []);
+      }
+      if (showAllRecentMatches) {
+        fetchAllMatches();
       }
     } catch (err) {
       console.error(err);
@@ -373,6 +399,13 @@ export default function HomePage() {
                         {actionLoading === m.id ? "Recalculating..." : "Accept & Update ELO"}
                       </button>
                       <button
+                        onClick={() => setSelectedEditMatchId(m.id)}
+                        className="flex items-center justify-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2 rounded-lg border border-slate-700 transition"
+                        title="Edit game scores or details"
+                      >
+                        <Pencil className="w-3.5 h-3.5" /> Edit
+                      </button>
+                      <button
                         onClick={() => handleRejectMatch(m.id)}
                         disabled={actionLoading === m.id}
                         className="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-rose-900/50 text-slate-300 hover:text-rose-200 text-xs px-3 py-2 rounded-lg border border-slate-700 transition"
@@ -543,42 +576,84 @@ export default function HomePage() {
         </section>
 
         {/* Recent Confirmed Matches */}
-        {recentMatches.filter((rm) => rm.status === "CONFIRMED").length > 0 && (
+        {(recentMatches.filter((rm) => rm.status === "CONFIRMED").length > 0 || allMatchesList.length > 0) && (
           <section className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
-              <Swords className="w-4 h-4 text-slate-400" /> Recent Confirmed Games
-            </h3>
-            <div className="divide-y divide-slate-800/60">
-              {recentMatches
-                .filter((rm) => rm.status === "CONFIRMED")
-                .map((rm) => (
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                <Swords className="w-4 h-4 text-slate-400" />
+                {showAllRecentMatches ? "All Confirmed Game History" : "Recent Confirmed Games"}
+              </h3>
+              <button
+                onClick={() => {
+                  const nextState = !showAllRecentMatches;
+                  setShowAllRecentMatches(nextState);
+                  if (nextState && allMatchesList.length === 0) {
+                    fetchAllMatches();
+                  }
+                }}
+                className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/20"
+              >
+                {loadingAllMatches
+                  ? "Loading..."
+                  : showAllRecentMatches
+                  ? "Show Recent 10 Only"
+                  : "View Full Match History"}
+              </button>
+            </div>
+            <div className="divide-y divide-slate-800/60 max-h-[460px] overflow-y-auto pr-1">
+              {(showAllRecentMatches
+                ? allMatchesList
+                : recentMatches.filter((rm) => rm.status === "CONFIRMED")
+              ).map((rm) => {
+                const is11 =
+                  (rm.notes && rm.notes.includes("[Game to 11]")) ||
+                  Math.max(rm.submitterScore, rm.opponentScore) <= 14;
+
+                return (
                   <div
                     key={rm.id}
-                    className="py-3 flex items-center justify-between text-xs flex-wrap gap-2"
+                    className="py-3 flex items-center justify-between text-xs flex-wrap gap-2 hover:bg-slate-800/20 px-2 rounded-lg transition"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-slate-400 font-mono">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-slate-400 font-mono text-[11px]">
                         {new Date(rm.createdAt).toLocaleDateString()}
+                      </span>
+                      <span
+                        className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${
+                          is11
+                            ? "bg-sky-500/10 text-sky-400 border border-sky-500/20"
+                            : "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                        }`}
+                      >
+                        {is11 ? "11" : "21"}
                       </span>
                       <span className="font-semibold text-white">
                         {rm.submitter.displayName} vs {rm.opponent.displayName}
                       </span>
                       {rm.notes && (
-                        <span className="text-slate-500 italic hidden sm:inline">
-                          — "{rm.notes}"
+                        <span className="text-slate-500 italic hidden sm:inline text-[11px]">
+                          — "{rm.notes.replace(/\[Game to \d+\]\s*/g, "")}"
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono font-bold text-white bg-slate-800 px-2 py-0.5 rounded">
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-mono font-bold text-white bg-slate-800 px-2.5 py-1 rounded">
                         {rm.submitterScore} - {rm.opponentScore}
                       </span>
                       <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold px-2 py-0.5 rounded text-[11px] flex items-center gap-1">
                         ✓ Confirmed
                       </span>
+                      <button
+                        onClick={() => setSelectedEditMatchId(rm.id)}
+                        className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition border border-transparent hover:border-slate-700"
+                        title="Edit Game Scores or Details"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
-                ))}
+                );
+              })}
             </div>
           </section>
         )}
@@ -853,6 +928,21 @@ export default function HomePage() {
         <CompareModal
           players={players}
           onClose={() => setShowCompareModal(false)}
+        />
+      )}
+
+      {/* Edit Match Modal */}
+      {selectedEditMatchId && (
+        <EditMatchModal
+          matchId={selectedEditMatchId}
+          players={players}
+          onClose={() => setSelectedEditMatchId(null)}
+          onMatchUpdated={() => {
+            fetchData();
+            if (showAllRecentMatches) {
+              fetchAllMatches();
+            }
+          }}
         />
       )}
     </div>

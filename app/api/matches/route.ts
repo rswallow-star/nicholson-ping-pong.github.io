@@ -2,6 +2,30 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validatePingPongScore } from "@/lib/elo";
 
+export const dynamic = "force-dynamic";
+
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get("status");
+    const limit = searchParams.get("limit") ? parseInt(searchParams.get("limit")!, 10) : 100;
+
+    const matches = await prisma.match.findMany({
+      where: status ? { status: status as any } : undefined,
+      include: {
+        submitter: { select: { id: true, displayName: true, roomNumber: true } },
+        opponent: { select: { id: true, displayName: true, roomNumber: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+
+    return NextResponse.json({ matches });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
