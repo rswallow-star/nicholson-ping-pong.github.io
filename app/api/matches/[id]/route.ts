@@ -100,30 +100,36 @@ export async function PATCH(
     }
 
     // Execute update inside transaction
-    const result = await prisma.$transaction(async (tx) => {
-      const updatedMatch = await tx.match.update({
-        where: { id },
-        data: {
-          submitterId,
-          opponentId,
-          submitterScore,
-          opponentScore,
-          notes: finalNotes,
-          status: body.status || existingMatch.status,
-        },
-        include: {
-          submitter: { select: { id: true, displayName: true, roomNumber: true } },
-          opponent: { select: { id: true, displayName: true, roomNumber: true } },
-        },
-      });
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const updatedMatch = await tx.match.update({
+          where: { id },
+          data: {
+            submitterId,
+            opponentId,
+            submitterScore,
+            opponentScore,
+            notes: finalNotes,
+            status: body.status || existingMatch.status,
+          },
+          include: {
+            submitter: { select: { id: true, displayName: true, roomNumber: true } },
+            opponent: { select: { id: true, displayName: true, roomNumber: true } },
+          },
+        });
 
-      // If the match was or is CONFIRMED, recalculate ratings chronologically
-      if (existingMatch.status === "CONFIRMED" || updatedMatch.status === "CONFIRMED") {
-        await recalculateAllRatings(tx);
+        // If the match was or is CONFIRMED, recalculate ratings chronologically
+        if (existingMatch.status === "CONFIRMED" || updatedMatch.status === "CONFIRMED") {
+          await recalculateAllRatings(tx);
+        }
+
+        return updatedMatch;
+      },
+      {
+        maxWait: 15000,
+        timeout: 30000,
       }
-
-      return updatedMatch;
-    });
+    );
 
     return NextResponse.json({
       success: true,
@@ -155,27 +161,33 @@ export async function DELETE(
       return NextResponse.json({ error: "Match not found." }, { status: 404 });
     }
 
-    await prisma.$transaction(async (tx) => {
-      // Delete any rating histories referencing this match
-      await tx.ratingHistory.deleteMany({
-        where: { matchId: id },
-      });
+    await prisma.$transaction(
+      async (tx) => {
+        // Delete any rating histories referencing this match
+        await tx.ratingHistory.deleteMany({
+          where: { matchId: id },
+        });
 
-      // Delete any disputes referencing this match
-      await tx.dispute.deleteMany({
-        where: { matchId: id },
-      });
+        // Delete any disputes referencing this match
+        await tx.dispute.deleteMany({
+          where: { matchId: id },
+        });
 
-      // Delete the match itself
-      await tx.match.delete({
-        where: { id },
-      });
+        // Delete the match itself
+        await tx.match.delete({
+          where: { id },
+        });
 
-      // If it was confirmed, recalculate all ratings to restore accurate totals
-      if (existingMatch.status === "CONFIRMED") {
-        await recalculateAllRatings(tx);
+        // If it was confirmed, recalculate all ratings to restore accurate totals
+        if (existingMatch.status === "CONFIRMED") {
+          await recalculateAllRatings(tx);
+        }
+      },
+      {
+        maxWait: 15000,
+        timeout: 30000,
       }
-    });
+    );
 
     return NextResponse.json({
       success: true,

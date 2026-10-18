@@ -1,3 +1,4 @@
+import { prisma } from "./prisma";
 import { calculateElo } from "./elo";
 
 /**
@@ -5,7 +6,7 @@ import { calculateElo } from "./elo";
  * 100% accurate player ratings, peak ratings, win/loss records, win streaks,
  * rating histories, and match snapshots.
  */
-export async function recalculateAllRatings(prismaTx: any) {
+export async function recalculateAllRatings(prismaTx: any = prisma) {
   // 1. Fetch all users
   const users = await prismaTx.user.findMany({
     select: { id: true },
@@ -71,6 +72,16 @@ export async function recalculateAllRatings(prismaTx: any) {
     createdAt: Date;
   }> = [];
 
+  const matchUpdates: Array<{
+    id: string;
+    data: {
+      submitterEloBefore: number;
+      submitterEloAfter: number;
+      opponentEloBefore: number;
+      opponentEloAfter: number;
+    };
+  }> = [];
+
   // 5. Replay each match chronologically
   for (const m of confirmedMatches) {
     const subState = getOrCreateState(m.submitterId);
@@ -126,16 +137,23 @@ export async function recalculateAllRatings(prismaTx: any) {
     }
     oppState.lastMatchAt = m.confirmedAt || m.createdAt;
 
-    // Update match snapshots
-    await prismaTx.match.update({
-      where: { id: m.id },
-      data: {
-        submitterEloBefore: subEloBefore,
-        submitterEloAfter: eloResult.playerANewRating,
-        opponentEloBefore: oppEloBefore,
-        opponentEloAfter: eloResult.playerBNewRating,
-      },
-    });
+    // Queue match snapshots update only if values differ
+    if (
+      m.submitterEloBefore !== subEloBefore ||
+      m.submitterEloAfter !== eloResult.playerANewRating ||
+      m.opponentEloBefore !== oppEloBefore ||
+      m.opponentEloAfter !== eloResult.playerBNewRating
+    ) {
+      matchUpdates.push({
+        id: m.id,
+        data: {
+          submitterEloBefore: subEloBefore,
+          submitterEloAfter: eloResult.playerANewRating,
+          opponentEloBefore: oppEloBefore,
+          opponentEloAfter: eloResult.playerBNewRating,
+        },
+      });
+    }
 
     // Queue history records
     ratingHistoriesToCreate.push({
@@ -157,36 +175,56 @@ export async function recalculateAllRatings(prismaTx: any) {
     });
   }
 
-  // 6. Batch insert recreated rating histories
+  // 6. Execute match snapshot updates in parallel batches of 15
+  const CHUNK_SIZE = 15;
+  for (let i = 0; i < matchUpdates.length; i += CHUNK_SIZE) {
+    const chunk = matchUpdates.slice(i, i + CHUNK_SIZE);
+    await Promise.all(
+      chunk.map((item) =>
+        prismaTx.match.update({
+          where: { id: item.id },
+          data: item.data,
+        })
+      )
+    );
+  }
+
+  // 7. Batch insert recreated rating histories
   if (ratingHistoriesToCreate.length > 0) {
     await prismaTx.ratingHistory.createMany({
       data: ratingHistoriesToCreate,
     });
   }
 
-  // 7. Persist updated ratings to database
-  for (const [userId, state] of Array.from(states.entries())) {
-    await prismaTx.rating.upsert({
-      where: { userId },
-      update: {
-        currentElo: state.currentElo,
-        peakElo: state.peakElo,
-        matchesPlayed: state.matchesPlayed,
-        wins: state.wins,
-        losses: state.losses,
-        currentStreak: state.currentStreak,
-        lastMatchAt: state.lastMatchAt,
-      },
-      create: {
-        userId,
-        currentElo: state.currentElo,
-        peakElo: state.peakElo,
-        matchesPlayed: state.matchesPlayed,
-        wins: state.wins,
-        losses: state.losses,
-        currentStreak: state.currentStreak,
-        lastMatchAt: state.lastMatchAt,
-      },
-    });
+  // 8. Persist updated ratings to database in parallel batches
+  const stateEntries = Array.from(states.entries());
+  for (let i = 0; i < stateEntries.length; i += CHUNK_SIZE) {
+    const chunk = stateEntries.slice(i, i + CHUNK_SIZE);
+    await Promise.all(
+      chunk.map(([userId, state]) =>
+        prismaTx.rating.upsert({
+          where: { userId },
+          update: {
+            currentElo: state.currentElo,
+            peakElo: state.peakElo,
+            matchesPlayed: state.matchesPlayed,
+            wins: state.wins,
+            losses: state.losses,
+            currentStreak: state.currentStreak,
+            lastMatchAt: state.lastMatchAt,
+          },
+          create: {
+            userId,
+            currentElo: state.currentElo,
+            peakElo: state.peakElo,
+            matchesPlayed: state.matchesPlayed,
+            wins: state.wins,
+            losses: state.losses,
+            currentStreak: state.currentStreak,
+            lastMatchAt: state.lastMatchAt,
+          },
+        })
+      )
+    );
   }
 }
