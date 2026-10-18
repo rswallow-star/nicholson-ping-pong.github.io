@@ -813,8 +813,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                           >
                             {p1Avg21For}
                             <span className="text-slate-500 text-xs ml-1 font-normal font-sans">
-                              (conceded {p1Avg21Against}
-                              {p1Matches21 > 0 ? `, ${parseFloat(p1Diff21PerGame) > 0 ? `+${p1Diff21PerGame}` : p1Diff21PerGame} diff` : ""})
+                              (conceded {p1Avg21Against})
                             </span>
                           </span>
                           <span className="text-xs font-sans text-purple-300 font-semibold flex items-center gap-1">
@@ -829,8 +828,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                           >
                             {p2Avg21For}
                             <span className="text-slate-500 text-xs ml-1 font-normal font-sans">
-                              (conceded {p2Avg21Against}
-                              {p2Matches21 > 0 ? `, ${parseFloat(p2Diff21PerGame) > 0 ? `+${p2Diff21PerGame}` : p2Diff21PerGame} diff` : ""})
+                              (conceded {p2Avg21Against})
                             </span>
                           </span>
                         </div>
@@ -847,8 +845,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                           >
                             {p1Avg11For}
                             <span className="text-slate-500 text-xs ml-1 font-normal font-sans">
-                              (conceded {p1Avg11Against}
-                              {p1Matches11 > 0 ? `, ${parseFloat(p1Diff11PerGame) > 0 ? `+${p1Diff11PerGame}` : p1Diff11PerGame} diff` : ""})
+                              (conceded {p1Avg11Against})
                             </span>
                           </span>
                           <span className="text-xs font-sans text-sky-300 font-semibold flex items-center gap-1">
@@ -863,8 +860,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                           >
                             {p2Avg11For}
                             <span className="text-slate-500 text-xs ml-1 font-normal font-sans">
-                              (conceded {p2Avg11Against}
-                              {p2Matches11 > 0 ? `, ${parseFloat(p2Diff11PerGame) > 0 ? `+${p2Diff11PerGame}` : p2Diff11PerGame} diff` : ""})
+                              (conceded {p2Avg11Against})
                             </span>
                           </span>
                         </div>
