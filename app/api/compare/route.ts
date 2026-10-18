@@ -265,6 +265,10 @@ export async function GET(req: Request) {
       const count21 = wins21 + losses21;
       const count11 = wins11 + losses11;
 
+      const diffTotal = ptsFor - ptsAgainst;
+      const diff21 = pts21For - pts21Against;
+      const diff11 = pts11For - pts11Against;
+
       return {
         matchesCount: count,
         wins,
@@ -272,7 +276,8 @@ export async function GET(req: Request) {
         winRate: count > 0 ? Math.round((wins / count) * 1000) / 10 : 0,
         pointsFor: ptsFor,
         pointsAgainst: ptsAgainst,
-        pointDiff: ptsFor - ptsAgainst,
+        pointDiff: diffTotal,
+        pointDiffPerGame: count > 0 ? (diffTotal / count).toFixed(1) : "0.0",
         games21: {
           matchesCount: count21,
           wins: wins21,
@@ -280,7 +285,8 @@ export async function GET(req: Request) {
           winRate: count21 > 0 ? Math.round((wins21 / count21) * 1000) / 10 : 0,
           pointsFor: pts21For,
           pointsAgainst: pts21Against,
-          pointDiff: pts21For - pts21Against,
+          pointDiff: diff21,
+          pointDiffPerGame: count21 > 0 ? (diff21 / count21).toFixed(1) : "0.0",
           avgPointsFor: count21 > 0 ? (pts21For / count21).toFixed(1) : "0.0",
           avgPointsAgainst: count21 > 0 ? (pts21Against / count21).toFixed(1) : "0.0",
         },
@@ -291,7 +297,8 @@ export async function GET(req: Request) {
           winRate: count11 > 0 ? Math.round((wins11 / count11) * 1000) / 10 : 0,
           pointsFor: pts11For,
           pointsAgainst: pts11Against,
-          pointDiff: pts11For - pts11Against,
+          pointDiff: diff11,
+          pointDiffPerGame: count11 > 0 ? (diff11 / count11).toFixed(1) : "0.0",
           avgPointsFor: count11 > 0 ? (pts11For / count11).toFixed(1) : "0.0",
           avgPointsAgainst: count11 > 0 ? (pts11Against / count11).toFixed(1) : "0.0",
         },
@@ -299,6 +306,8 @@ export async function GET(req: Request) {
         avgPoints21Against: count21 > 0 ? (pts21Against / count21).toFixed(1) : "0.0",
         avgPoints11For: count11 > 0 ? (pts11For / count11).toFixed(1) : "0.0",
         avgPoints11Against: count11 > 0 ? (pts11Against / count11).toFixed(1) : "0.0",
+        pointDiff21PerGame: count21 > 0 ? (diff21 / count21).toFixed(1) : "0.0",
+        pointDiff11PerGame: count11 > 0 ? (diff11 / count11).toFixed(1) : "0.0",
         avgPointsFor: count > 0 ? (ptsFor / count).toFixed(1) : "0.0",
         avgPointsAgainst: count > 0 ? (ptsAgainst / count).toFixed(1) : "0.0",
       };
@@ -511,6 +520,9 @@ export async function GET(req: Request) {
         totalPointsFor: career.pointsFor,
         totalPointsAgainst: career.pointsAgainst,
         pointDifferential: career.pointDiff,
+        pointDiffPerGame: career.pointDiffPerGame,
+        pointDiff21PerGame: career.pointDiff21PerGame,
+        pointDiff11PerGame: career.pointDiff11PerGame,
         games21: career.games21,
         games11: career.games11,
         avgPoints21For: career.avgPoints21For,
@@ -593,11 +605,19 @@ export async function GET(req: Request) {
         p2Wins: p2H2hWins,
         p1H2hPoints,
         p2H2hPoints,
+        p1H2hDiff: p1H2hPoints - p2H2hPoints,
+        p2H2hDiff: p2H2hPoints - p1H2hPoints,
+        p1H2hDiffPerGame: h2hTotal > 0 ? ((p1H2hPoints - p2H2hPoints) / h2hTotal).toFixed(1) : null,
+        p2H2hDiffPerGame: h2hTotal > 0 ? ((p2H2hPoints - p1H2hPoints) / h2hTotal).toFixed(1) : null,
         count21: countH2h21,
         p1Wins21: p1H2h21Wins,
         p2Wins21: p2H2h21Wins,
         p1Points21: p1H2h21Points,
         p2Points21: p2H2h21Points,
+        p1Diff21: p1H2h21Points - p2H2h21Points,
+        p2Diff21: p2H2h21Points - p1H2h21Points,
+        p1Diff21PerGame: countH2h21 > 0 ? ((p1H2h21Points - p2H2h21Points) / countH2h21).toFixed(1) : null,
+        p2Diff21PerGame: countH2h21 > 0 ? ((p2H2h21Points - p1H2h21Points) / countH2h21).toFixed(1) : null,
         p1Avg21: countH2h21 > 0 ? (p1H2h21Points / countH2h21).toFixed(1) : null,
         p2Avg21: countH2h21 > 0 ? (p2H2h21Points / countH2h21).toFixed(1) : null,
         count11: countH2h11,
@@ -605,6 +625,10 @@ export async function GET(req: Request) {
         p2Wins11: p2H2h11Wins,
         p1Points11: p1H2h11Points,
         p2Points11: p2H2h11Points,
+        p1Diff11: p1H2h11Points - p2H2h11Points,
+        p2Diff11: p2H2h11Points - p1H2h11Points,
+        p1Diff11PerGame: countH2h11 > 0 ? ((p1H2h11Points - p2H2h11Points) / countH2h11).toFixed(1) : null,
+        p2Diff11PerGame: countH2h11 > 0 ? ((p2H2h11Points - p1H2h11Points) / countH2h11).toFixed(1) : null,
         p1Avg11: countH2h11 > 0 ? (p1H2h11Points / countH2h11).toFixed(1) : null,
         p2Avg11: countH2h11 > 0 ? (p2H2h11Points / countH2h11).toFixed(1) : null,
         p1AvgPoints: h2hTotal > 0 ? (p1H2hPoints / h2hTotal).toFixed(1) : null,

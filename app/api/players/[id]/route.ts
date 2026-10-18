@@ -208,9 +208,18 @@ export async function GET(
     const pointDifferential = totalPointsScored - totalPointsConceded;
     const avgPointsConceded =
       totalGames > 0 ? (totalPointsConceded / totalGames).toFixed(1) : "0.0";
+    const pointDiffPerGame =
+      totalGames > 0 ? (pointDifferential / totalGames).toFixed(1) : "0.0";
 
     const matches21 = gamesTo21Wins + gamesTo21Losses;
     const matches11 = gamesTo11Wins + gamesTo11Losses;
+
+    const pointDiff21 = points21Scored - points21Conceded;
+    const pointDiff11 = points11Scored - points11Conceded;
+    const pointDiff21PerGame =
+      matches21 > 0 ? (pointDiff21 / matches21).toFixed(1) : "0.0";
+    const pointDiff11PerGame =
+      matches11 > 0 ? (pointDiff11 / matches11).toFixed(1) : "0.0";
 
     const matchCount = confirmedMatches.length;
     const avgOpponentElo =
@@ -252,6 +261,9 @@ export async function GET(
         totalPointsFor: totalPointsScored,
         totalPointsAgainst: totalPointsConceded,
         pointDifferential,
+        pointDiffPerGame,
+        pointDiff21PerGame,
+        pointDiff11PerGame,
         avgPointsScored,
         avgPointsConceded,
         avgPoints21Scored,
@@ -261,7 +273,8 @@ export async function GET(
         points21: {
           scored: points21Scored,
           conceded: points21Conceded,
-          diff: points21Scored - points21Conceded,
+          diff: pointDiff21,
+          pointDiffPerGame: pointDiff21PerGame,
           avgScored: avgPoints21Scored,
           avgConceded: avgPoints21Conceded,
           matches: matches21,
@@ -269,7 +282,8 @@ export async function GET(
         points11: {
           scored: points11Scored,
           conceded: points11Conceded,
-          diff: points11Scored - points11Conceded,
+          diff: pointDiff11,
+          pointDiffPerGame: pointDiff11PerGame,
           avgScored: avgPoints11Scored,
           avgConceded: avgPoints11Conceded,
           matches: matches11,
@@ -282,7 +296,8 @@ export async function GET(
           losses: gamesTo21Losses,
           pointsScored: points21Scored,
           pointsConceded: points21Conceded,
-          pointDiff: points21Scored - points21Conceded,
+          pointDiff: pointDiff21,
+          pointDiffPerGame: pointDiff21PerGame,
           avgPointsScored: avgPoints21Scored,
           avgPointsConceded: avgPoints21Conceded,
         },
@@ -291,13 +306,17 @@ export async function GET(
           losses: gamesTo11Losses,
           pointsScored: points11Scored,
           pointsConceded: points11Conceded,
-          pointDiff: points11Scored - points11Conceded,
+          pointDiff: pointDiff11,
+          pointDiffPerGame: pointDiff11PerGame,
           avgPointsScored: avgPoints11Scored,
           avgPointsConceded: avgPoints11Conceded,
         },
         totalPointsFor: totalPointsScored,
         totalPointsAgainst: totalPointsConceded,
         pointDifferential,
+        pointDiffPerGame,
+        pointDiff21PerGame,
+        pointDiff11PerGame,
         avgPointsScored,
         avgPointsConceded,
         avgPoints21Scored,

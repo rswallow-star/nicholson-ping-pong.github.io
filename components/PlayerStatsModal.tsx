@@ -375,42 +375,76 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                   </div>
 
                   {/* Card 3: Games to 21 */}
-                  <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-3.5 flex flex-col justify-between">
-                    <div className="flex items-center justify-between text-slate-400 mb-1">
-                      <span className="text-xs font-medium">Games to 21</span>
-                      <Trophy className="w-4 h-4 text-purple-400" />
-                    </div>
-                    <div className="text-xl font-black font-mono text-purple-300">
-                      {data.analytics.gamesTo21.wins}W – {data.analytics.gamesTo21.losses}L
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      {g21Pct}% Win Rate ({g21Total} matches)
-                    </div>
-                    {data.analytics.gamesTo21.avgPointsScored && (
-                      <div className="text-[10px] text-purple-400 font-mono mt-0.5">
-                        Avg: {data.analytics.gamesTo21.avgPointsScored} pts / gm
+                  {(() => {
+                    const g21Diff =
+                      data.analytics.gamesTo21.pointDiff ??
+                      ((data.analytics.gamesTo21.pointsScored ?? 0) - (data.analytics.gamesTo21.pointsConceded ?? 0));
+                    const g21DiffPerGame =
+                      data.analytics.gamesTo21.pointDiffPerGame ??
+                      (g21Total > 0 ? (g21Diff / g21Total).toFixed(1) : "0.0");
+                    const g21DiffNum = parseFloat(g21DiffPerGame);
+
+                    return (
+                      <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-3.5 flex flex-col justify-between">
+                        <div className="flex items-center justify-between text-slate-400 mb-1">
+                          <span className="text-xs font-medium">Games to 21</span>
+                          <Trophy className="w-4 h-4 text-purple-400" />
+                        </div>
+                        <div className="text-xl font-black font-mono text-purple-300">
+                          {data.analytics.gamesTo21.wins}W – {data.analytics.gamesTo21.losses}L
+                        </div>
+                        <div className="text-[11px] text-slate-400">
+                          {g21Pct}% Win Rate ({g21Total} matches)
+                        </div>
+                        {data.analytics.gamesTo21.avgPointsScored && (
+                          <div className="text-[10px] text-purple-400 font-mono mt-0.5">
+                            Avg: {data.analytics.gamesTo21.avgPointsScored} pts
+                            {g21Total > 0 && (
+                              <span className={`ml-1 font-semibold ${g21DiffNum > 0 ? "text-emerald-400" : g21DiffNum < 0 ? "text-rose-400" : "text-slate-400"}`}>
+                                ({g21DiffNum > 0 ? `+${g21DiffPerGame}` : g21DiffPerGame} diff)
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
 
                   {/* Card 4: Games to 11 */}
-                  <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-3.5 flex flex-col justify-between">
-                    <div className="flex items-center justify-between text-slate-400 mb-1">
-                      <span className="text-xs font-medium">Games to 11</span>
-                      <Zap className="w-4 h-4 text-sky-400" />
-                    </div>
-                    <div className="text-xl font-black font-mono text-sky-300">
-                      {data.analytics.gamesTo11.wins}W – {data.analytics.gamesTo11.losses}L
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      {g11Pct}% Win Rate ({g11Total} matches)
-                    </div>
-                    {data.analytics.gamesTo11.avgPointsScored && (
-                      <div className="text-[10px] text-sky-400 font-mono mt-0.5">
-                        Avg: {data.analytics.gamesTo11.avgPointsScored} pts / gm
+                  {(() => {
+                    const g11Diff =
+                      data.analytics.gamesTo11.pointDiff ??
+                      ((data.analytics.gamesTo11.pointsScored ?? 0) - (data.analytics.gamesTo11.pointsConceded ?? 0));
+                    const g11DiffPerGame =
+                      data.analytics.gamesTo11.pointDiffPerGame ??
+                      (g11Total > 0 ? (g11Diff / g11Total).toFixed(1) : "0.0");
+                    const g11DiffNum = parseFloat(g11DiffPerGame);
+
+                    return (
+                      <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-3.5 flex flex-col justify-between">
+                        <div className="flex items-center justify-between text-slate-400 mb-1">
+                          <span className="text-xs font-medium">Games to 11</span>
+                          <Zap className="w-4 h-4 text-sky-400" />
+                        </div>
+                        <div className="text-xl font-black font-mono text-sky-300">
+                          {data.analytics.gamesTo11.wins}W – {data.analytics.gamesTo11.losses}L
+                        </div>
+                        <div className="text-[11px] text-slate-400">
+                          {g11Pct}% Win Rate ({g11Total} matches)
+                        </div>
+                        {data.analytics.gamesTo11.avgPointsScored && (
+                          <div className="text-[10px] text-sky-400 font-mono mt-0.5">
+                            Avg: {data.analytics.gamesTo11.avgPointsScored} pts
+                            {g11Total > 0 && (
+                              <span className={`ml-1 font-semibold ${g11DiffNum > 0 ? "text-emerald-400" : g11DiffNum < 0 ? "text-rose-400" : "text-slate-400"}`}>
+                                ({g11DiffNum > 0 ? `+${g11DiffPerGame}` : g11DiffPerGame} diff)
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
                 </div>
               );
             })()}
@@ -441,6 +475,13 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                 data.analytics?.gamesTo21 ? data.analytics.gamesTo21.wins + data.analytics.gamesTo21.losses : recent21.length;
               const count11 =
                 data.analytics?.gamesTo11 ? data.analytics.gamesTo11.wins + data.analytics.gamesTo11.losses : recent11.length;
+              const totalGamesCount = (data.player?.wins ?? 0) + (data.player?.losses ?? 0) || (count21 + count11);
+
+              const diffPerGame =
+                data.player?.pointDiffPerGame ??
+                data.analytics?.pointDiffPerGame ??
+                (totalGamesCount > 0 ? (pointDiff / totalGamesCount).toFixed(1) : "0.0");
+              const diffPerGameNum = parseFloat(diffPerGame);
 
               const pts21For =
                 data.analytics?.gamesTo21?.pointsScored ??
@@ -470,6 +511,18 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                 data.player?.avgPoints11Conceded ??
                 (count11 > 0 ? (pts11Against / count11).toFixed(1) : "—");
 
+              const diff21PerGame =
+                data.player?.pointDiff21PerGame ??
+                data.analytics?.pointDiff21PerGame ??
+                data.analytics?.gamesTo21?.pointDiffPerGame ??
+                (count21 > 0 ? ((pts21For - pts21Against) / count21).toFixed(1) : "0.0");
+
+              const diff11PerGame =
+                data.player?.pointDiff11PerGame ??
+                data.analytics?.pointDiff11PerGame ??
+                data.analytics?.gamesTo11?.pointDiffPerGame ??
+                (count11 > 0 ? ((pts11For - pts11Against) / count11).toFixed(1) : "0.0");
+
               return (
                 <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
@@ -495,11 +548,27 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                     </div>
                     <div className="h-8 w-px bg-slate-800 hidden sm:block" />
                     <div className="text-right">
+                      <div className="text-slate-500 text-[11px]">Diff / Game</div>
+                      <div className={`text-base font-black ${diffPerGameNum > 0 ? "text-emerald-400" : diffPerGameNum < 0 ? "text-rose-400" : "text-slate-300"}`}>
+                        {diffPerGameNum > 0 ? `+${diffPerGame}` : diffPerGame} pts
+                      </div>
+                    </div>
+                    <div className="h-8 w-px bg-slate-800 hidden sm:block" />
+                    <div className="text-right">
                       <div className="text-purple-400 text-[11px] font-semibold flex items-center gap-1 justify-end">
                         <Trophy className="w-3 h-3" /> 21-pt Match Avg
                       </div>
                       <div className="text-slate-200 font-bold">
-                        {avg21For !== "—" ? `${avg21For} scored / ${avg21Against} conceded` : "No 21-pt games"}
+                        {avg21For !== "—" ? (
+                          <>
+                            {avg21For} scored / {avg21Against} conceded
+                            <span className={`ml-1.5 text-[11px] font-semibold ${parseFloat(diff21PerGame) > 0 ? "text-emerald-400" : parseFloat(diff21PerGame) < 0 ? "text-rose-400" : "text-slate-400"}`}>
+                              ({parseFloat(diff21PerGame) > 0 ? `+${diff21PerGame}` : diff21PerGame}/gm)
+                            </span>
+                          </>
+                        ) : (
+                          "No 21-pt games"
+                        )}
                       </div>
                     </div>
                     <div className="h-8 w-px bg-slate-800 hidden sm:block" />
@@ -508,7 +577,16 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                         <Zap className="w-3 h-3" /> 11-pt Match Avg
                       </div>
                       <div className="text-slate-200 font-bold">
-                        {avg11For !== "—" ? `${avg11For} scored / ${avg11Against} conceded` : "No 11-pt games"}
+                        {avg11For !== "—" ? (
+                          <>
+                            {avg11For} scored / {avg11Against} conceded
+                            <span className={`ml-1.5 text-[11px] font-semibold ${parseFloat(diff11PerGame) > 0 ? "text-emerald-400" : parseFloat(diff11PerGame) < 0 ? "text-rose-400" : "text-slate-400"}`}>
+                              ({parseFloat(diff11PerGame) > 0 ? `+${diff11PerGame}` : diff11PerGame}/gm)
+                            </span>
+                          </>
+                        ) : (
+                          "No 11-pt games"
+                        )}
                       </div>
                     </div>
                   </div>

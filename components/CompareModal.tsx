@@ -319,6 +319,35 @@ export const CompareModal: React.FC<CompareModalProps> = ({
               const p1Diff = p1PtsFor - p1PtsAgainst;
               const p2Diff = p2PtsFor - p2PtsAgainst;
 
+              const p1Matches = p1Wins + p1Losses;
+              const p2Matches = p2Wins + p2Losses;
+
+              const p1DiffPerGame = p1Matches > 0 ? (p1Diff / p1Matches).toFixed(1) : "0.0";
+              const p2DiffPerGame = p2Matches > 0 ? (p2Diff / p2Matches).toFixed(1) : "0.0";
+
+              // 21-pt and 11-pt diffs per game
+              const p1Matches21 = p1.games21?.matchesCount ?? ((p1.games21?.wins ?? 0) + (p1.games21?.losses ?? 0));
+              const p2Matches21 = p2.games21?.matchesCount ?? ((p2.games21?.wins ?? 0) + (p2.games21?.losses ?? 0));
+              const p1Diff21PerGame =
+                p1.games21?.pointDiffPerGame ??
+                p1.pointDiff21PerGame ??
+                (p1Matches21 > 0 ? (((p1.games21?.pointsFor ?? 0) - (p1.games21?.pointsAgainst ?? 0)) / p1Matches21).toFixed(1) : "0.0");
+              const p2Diff21PerGame =
+                p2.games21?.pointDiffPerGame ??
+                p2.pointDiff21PerGame ??
+                (p2Matches21 > 0 ? (((p2.games21?.pointsFor ?? 0) - (p2.games21?.pointsAgainst ?? 0)) / p2Matches21).toFixed(1) : "0.0");
+
+              const p1Matches11 = p1.games11?.matchesCount ?? ((p1.games11?.wins ?? 0) + (p1.games11?.losses ?? 0));
+              const p2Matches11 = p2.games11?.matchesCount ?? ((p2.games11?.wins ?? 0) + (p2.games11?.losses ?? 0));
+              const p1Diff11PerGame =
+                p1.games11?.pointDiffPerGame ??
+                p1.pointDiff11PerGame ??
+                (p1Matches11 > 0 ? (((p1.games11?.pointsFor ?? 0) - (p1.games11?.pointsAgainst ?? 0)) / p1Matches11).toFixed(1) : "0.0");
+              const p2Diff11PerGame =
+                p2.games11?.pointDiffPerGame ??
+                p2.pointDiff11PerGame ??
+                (p2Matches11 > 0 ? (((p2.games11?.pointsFor ?? 0) - (p2.games11?.pointsAgainst ?? 0)) / p2Matches11).toFixed(1) : "0.0");
+
               // Separated format averages (never combined!)
               const p1Avg21For = p1.games21?.avgPointsFor ?? p1.avgPoints21For ?? "0.0";
               const p1Avg21Against = p1.games21?.avgPointsAgainst ?? p1.avgPoints21Against ?? "0.0";
@@ -330,7 +359,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
               const p2Avg11For = p2.games11?.avgPointsFor ?? p2.avgPoints11For ?? "0.0";
               const p2Avg11Against = p2.games11?.avgPointsAgainst ?? p2.avgPoints11Against ?? "0.0";
 
-              // Direct H2H points
+              // Direct H2H points & diffs
               const p1H2hPts =
                 formatFilter === "21"
                   ? data.headToHead?.p1Points21 ?? filteredH2hMatches.reduce((s: number, m: any) => s + m.p1Score, 0)
@@ -347,6 +376,20 @@ export const CompareModal: React.FC<CompareModalProps> = ({
 
               const p1H2hAvg = h2hMatchesCount > 0 ? (p1H2hPts / h2hMatchesCount).toFixed(1) : null;
               const p2H2hAvg = h2hMatchesCount > 0 ? (p2H2hPts / h2hMatchesCount).toFixed(1) : null;
+
+              const p1H2hDiffPerGame =
+                formatFilter === "21"
+                  ? data.headToHead?.p1Diff21PerGame ?? (h2hMatchesCount > 0 ? ((p1H2hPts - p2H2hPts) / h2hMatchesCount).toFixed(1) : null)
+                  : formatFilter === "11"
+                  ? data.headToHead?.p1Diff11PerGame ?? (h2hMatchesCount > 0 ? ((p1H2hPts - p2H2hPts) / h2hMatchesCount).toFixed(1) : null)
+                  : data.headToHead?.p1H2hDiffPerGame ?? (h2hMatchesCount > 0 ? ((p1H2hPts - p2H2hPts) / h2hMatchesCount).toFixed(1) : null);
+
+              const p2H2hDiffPerGame =
+                formatFilter === "21"
+                  ? data.headToHead?.p2Diff21PerGame ?? (h2hMatchesCount > 0 ? ((p2H2hPts - p1H2hPts) / h2hMatchesCount).toFixed(1) : null)
+                  : formatFilter === "11"
+                  ? data.headToHead?.p2Diff11PerGame ?? (h2hMatchesCount > 0 ? ((p2H2hPts - p1H2hPts) / h2hMatchesCount).toFixed(1) : null)
+                  : data.headToHead?.p2H2hDiffPerGame ?? (h2hMatchesCount > 0 ? ((p2H2hPts - p1H2hPts) / h2hMatchesCount).toFixed(1) : null);
 
               return (
                 <>
@@ -723,6 +766,41 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                         </span>
                       </div>
 
+                      {/* Point Differential Per Game (filtered by format) */}
+                      <div className="py-2.5 px-4 flex items-center justify-between font-mono">
+                        <span
+                          className={`font-bold ${
+                            parseFloat(p1DiffPerGame) > 0
+                              ? "text-emerald-400 font-black"
+                              : parseFloat(p1DiffPerGame) < 0
+                              ? "text-rose-400 font-black"
+                              : "text-slate-300"
+                          }`}
+                        >
+                          {parseFloat(p1DiffPerGame) > 0 ? `+${p1DiffPerGame}` : p1DiffPerGame}
+                          <span className="text-slate-500 text-xs ml-1 font-normal font-sans">
+                            / gm
+                          </span>
+                        </span>
+                        <span className="text-xs font-sans text-slate-400 font-semibold" title="Average point differential per match played">
+                          {formatFilter === "all" ? "Point Diff / Game" : formatFilter === "21" ? "21-pt Diff / Game" : "11-pt Diff / Game"}
+                        </span>
+                        <span
+                          className={`font-bold text-right ${
+                            parseFloat(p2DiffPerGame) > 0
+                              ? "text-purple-400 font-black"
+                              : parseFloat(p2DiffPerGame) < 0
+                              ? "text-rose-400 font-black"
+                              : "text-slate-300"
+                          }`}
+                        >
+                          {parseFloat(p2DiffPerGame) > 0 ? `+${p2DiffPerGame}` : p2DiffPerGame}
+                          <span className="text-slate-500 text-xs ml-1 font-normal font-sans">
+                            / gm
+                          </span>
+                        </span>
+                      </div>
+
                       {/* SEPARATED AVERAGE POINTS PER MATCH (NEVER COMBINED) */}
                       {(formatFilter === "all" || formatFilter === "21") && (
                         <div className="py-2.5 px-4 flex items-center justify-between font-mono bg-slate-900/40">
@@ -735,7 +813,8 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                           >
                             {p1Avg21For}
                             <span className="text-slate-500 text-xs ml-1 font-normal font-sans">
-                              (conceded {p1Avg21Against})
+                              (conceded {p1Avg21Against}
+                              {p1Matches21 > 0 ? `, ${parseFloat(p1Diff21PerGame) > 0 ? `+${p1Diff21PerGame}` : p1Diff21PerGame} diff` : ""})
                             </span>
                           </span>
                           <span className="text-xs font-sans text-purple-300 font-semibold flex items-center gap-1">
@@ -750,7 +829,8 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                           >
                             {p2Avg21For}
                             <span className="text-slate-500 text-xs ml-1 font-normal font-sans">
-                              (conceded {p2Avg21Against})
+                              (conceded {p2Avg21Against}
+                              {p2Matches21 > 0 ? `, ${parseFloat(p2Diff21PerGame) > 0 ? `+${p2Diff21PerGame}` : p2Diff21PerGame} diff` : ""})
                             </span>
                           </span>
                         </div>
@@ -767,7 +847,8 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                           >
                             {p1Avg11For}
                             <span className="text-slate-500 text-xs ml-1 font-normal font-sans">
-                              (conceded {p1Avg11Against})
+                              (conceded {p1Avg11Against}
+                              {p1Matches11 > 0 ? `, ${parseFloat(p1Diff11PerGame) > 0 ? `+${p1Diff11PerGame}` : p1Diff11PerGame} diff` : ""})
                             </span>
                           </span>
                           <span className="text-xs font-sans text-sky-300 font-semibold flex items-center gap-1">
@@ -782,7 +863,8 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                           >
                             {p2Avg11For}
                             <span className="text-slate-500 text-xs ml-1 font-normal font-sans">
-                              (conceded {p2Avg11Against})
+                              (conceded {p2Avg11Against}
+                              {p2Matches11 > 0 ? `, ${parseFloat(p2Diff11PerGame) > 0 ? `+${p2Diff11PerGame}` : p2Diff11PerGame} diff` : ""})
                             </span>
                           </span>
                         </div>
@@ -799,11 +881,12 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                             {p1H2hPts}
                             {p1H2hAvg && (
                               <span className="text-slate-400 text-xs ml-1 font-normal font-sans">
-                                ({p1H2hAvg}/gm)
+                                ({p1H2hAvg}/gm
+                                {p1H2hDiffPerGame !== null ? `, ${parseFloat(p1H2hDiffPerGame) > 0 ? `+${p1H2hDiffPerGame}` : p1H2hDiffPerGame} diff` : ""})
                               </span>
                             )}
                           </span>
-                          <span className="text-xs font-sans text-purple-300 font-semibold" title="Total points scored in direct head-to-head matches for the selected format">
+                          <span className="text-xs font-sans text-purple-300 font-semibold" title="Total points scored and differential in direct head-to-head matches for the selected format">
                             {formatFilter === "all" ? "H2H Points Scored" : formatFilter === "21" ? "21-pt H2H Points" : "11-pt H2H Points"}
                           </span>
                           <span
@@ -814,7 +897,8 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                             {p2H2hPts}
                             {p2H2hAvg && (
                               <span className="text-slate-400 text-xs ml-1 font-normal font-sans">
-                                ({p2H2hAvg}/gm)
+                                ({p2H2hAvg}/gm
+                                {p2H2hDiffPerGame !== null ? `, ${parseFloat(p2H2hDiffPerGame) > 0 ? `+${p2H2hDiffPerGame}` : p2H2hDiffPerGame} diff` : ""})
                               </span>
                             )}
                           </span>
