@@ -118,7 +118,7 @@ export async function GET(
       if (isWin && oppEloDefeated) {
         if (!highestEloDefeated || oppEloDefeated > highestEloDefeated.elo) {
           highestEloDefeated = {
-            name: formatPlayerName(opponent.displayName, opponent.nickname),
+            name: formatPlayerName(opponent.displayName, (opponent as any)?.nickname),
             elo: Math.round(oppEloDefeated * 10) / 10,
           };
         }
@@ -132,9 +132,9 @@ export async function GET(
         isWin,
         myScore,
         theirScore,
-        opponentName: formatPlayerName(opponent.displayName, opponent.nickname),
+        opponentName: formatPlayerName(opponent.displayName, (opponent as any)?.nickname),
         opponentRawName: opponent.displayName,
-        opponentNickname: opponent.nickname,
+        opponentNickname: (opponent as any)?.nickname ?? null,
         opponentRoom: opponent.roomNumber,
         isGameTo11: is11,
         delta: historyEntry ? historyEntry.delta : null,
@@ -402,7 +402,7 @@ export async function PATCH(
         const stripped = nickname.trim().replace(/^["“'”]+|["“'”]+$/g, "").trim();
         if (stripped.length > 0) {
           const gamesPlayed = currentUser.rating?.matchesPlayed ?? 0;
-          if (gamesPlayed < 50 && !currentUser.nickname) {
+          if (gamesPlayed < 50 && !(currentUser as any)?.nickname) {
             return NextResponse.json(
               {
                 error: `Nicknames only unlock once a player has played at least 50 games. (${gamesPlayed}/50 games played).`,
@@ -410,12 +410,12 @@ export async function PATCH(
               { status: 400 }
             );
           }
-          updateData.nickname = stripped;
+          (updateData as any).nickname = stripped;
         } else {
-          updateData.nickname = null;
+          (updateData as any).nickname = null;
         }
       } else {
-        updateData.nickname = null;
+        (updateData as any).nickname = null;
       }
     }
 
