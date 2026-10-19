@@ -508,7 +508,7 @@ export async function GET(req: Request) {
       return {
         id: user.id,
         displayName: user.displayName,
-        nickname: user.nickname,
+        nickname: (user as any).nickname ?? null,
         roomNumber: user.roomNumber,
         rank,
         currentElo: user.rating?.currentElo ?? 1200,

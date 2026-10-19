@@ -245,8 +245,8 @@ export async function GET(
       player: {
         id: user.id,
         displayName: user.displayName,
-        nickname: user.nickname,
-        formattedName: formatPlayerName(user.displayName, user.nickname),
+        nickname: (user as any).nickname ?? null,
+        formattedName: formatPlayerName(user.displayName, (user as any).nickname),
         roomNumber: user.roomNumber,
         rank,
         currentElo: user.rating?.currentElo ?? 1200.0,
