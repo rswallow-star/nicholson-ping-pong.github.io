@@ -39,8 +39,8 @@ export async function GET(
       include: {
         match: {
           include: {
-            submitter: { select: { id: true, displayName: true, nickname: true, roomNumber: true } },
-            opponent: { select: { id: true, displayName: true, nickname: true, roomNumber: true } },
+            submitter: { select: { id: true, displayName: true, nickname: true, roomNumber: true } as any },
+            opponent: { select: { id: true, displayName: true, nickname: true, roomNumber: true } as any },
           },
         },
       },
@@ -53,8 +53,8 @@ export async function GET(
         OR: [{ submitterId: id }, { opponentId: id }],
       },
       include: {
-        submitter: { select: { id: true, displayName: true, nickname: true, roomNumber: true, rating: true } },
-        opponent: { select: { id: true, displayName: true, nickname: true, roomNumber: true, rating: true } },
+        submitter: { select: { id: true, displayName: true, nickname: true, roomNumber: true, rating: true } as any },
+        opponent: { select: { id: true, displayName: true, nickname: true, roomNumber: true, rating: true } as any },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -79,10 +79,10 @@ export async function GET(
       const myScore = isSubmitter ? m.submitterScore : m.opponentScore;
       const theirScore = isSubmitter ? m.opponentScore : m.submitterScore;
       const isWin = myScore > theirScore;
-      const opponent = isSubmitter ? m.opponent : m.submitter;
+      const opponent: any = isSubmitter ? m.opponent : m.submitter;
       const opponentElo = isSubmitter ? m.opponentEloBefore : m.submitterEloBefore;
       const opponentCurrentElo =
-        (isSubmitter ? m.opponent.rating?.currentElo : m.submitter.rating?.currentElo) ??
+        (opponent?.rating?.currentElo) ??
         opponentElo ??
         1200;
 
@@ -161,8 +161,8 @@ export async function GET(
         date: h.createdAt,
         opponent:
           h.match.submitterId === id
-            ? formatPlayerName(h.match.opponent.displayName, h.match.opponent.nickname)
-            : formatPlayerName(h.match.submitter.displayName, h.match.submitter.nickname),
+            ? formatPlayerName((h.match.opponent as any)?.displayName, (h.match.opponent as any)?.nickname)
+            : formatPlayerName((h.match.submitter as any)?.displayName, (h.match.submitter as any)?.nickname),
       })),
     ];
 
@@ -421,7 +421,7 @@ export async function PATCH(
 
     const updated = await prisma.user.update({
       where: { id },
-      data: updateData,
+      data: updateData as any,
     });
 
     return NextResponse.json({
@@ -429,7 +429,7 @@ export async function PATCH(
       message: "Player updated successfully!",
       user: {
         ...updated,
-        formattedName: formatPlayerName(updated.displayName, updated.nickname),
+        formattedName: formatPlayerName(updated.displayName, (updated as any).nickname),
       },
     });
   } catch (error: any) {

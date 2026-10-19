@@ -13,8 +13,8 @@ export async function GET(req: Request) {
     const matches = await prisma.match.findMany({
       where: status ? { status: status as any } : undefined,
       include: {
-        submitter: { select: { id: true, displayName: true, nickname: true, roomNumber: true } },
-        opponent: { select: { id: true, displayName: true, nickname: true, roomNumber: true } },
+        submitter: { select: { id: true, displayName: true, nickname: true, roomNumber: true } as any },
+        opponent: { select: { id: true, displayName: true, nickname: true, roomNumber: true } as any },
       },
       orderBy: { createdAt: "desc" },
       take: limit,
