@@ -39,17 +39,19 @@ export async function POST(
         Math.max(match.submitterScore, match.opponentScore) <= 14;
       const gameType: 11 | 21 = isGameTo11 ? 11 : 21;
 
-      // Calculate post-match ELO with game-length weighting
+      // Calculate post-match ELO with game-length weighting and win streak multiplier
       const eloResult = calculateElo({
         playerAId: match.submitterId,
         playerARating: submitterRating.currentElo,
         playerAMatchesCount: submitterRating.matchesPlayed,
         playerAScore: match.submitterScore,
+        playerACurrentStreak: submitterRating.currentStreak,
 
         playerBId: match.opponentId,
         playerBRating: opponentRating.currentElo,
         playerBMatchesCount: opponentRating.matchesPlayed,
         playerBScore: match.opponentScore,
+        playerBCurrentStreak: opponentRating.currentStreak,
 
         gameType,
       });

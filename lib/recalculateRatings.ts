@@ -100,11 +100,13 @@ export async function recalculateAllRatings(prismaTx: any = prisma) {
       playerARating: subEloBefore,
       playerAMatchesCount: subState.matchesPlayed,
       playerAScore: m.submitterScore,
+      playerACurrentStreak: subState.currentStreak,
 
       playerBId: m.opponentId,
       playerBRating: oppEloBefore,
       playerBMatchesCount: oppState.matchesPlayed,
       playerBScore: m.opponentScore,
+      playerBCurrentStreak: oppState.currentStreak,
 
       gameType,
     });
