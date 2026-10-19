@@ -17,6 +17,7 @@ import {
   Trash2,
   Check,
   Sparkles,
+  Lock,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -28,6 +29,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { EditMatchModal } from "./EditMatchModal";
+import { formatPlayerName } from "@/lib/formatName";
 
 interface PlayerStatsModalProps {
   playerId: string;
@@ -50,6 +52,7 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
   // Edit State
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
+  const [editNickname, setEditNickname] = useState("");
   const [editRoom, setEditRoom] = useState("");
   const [saveLoading, setSaveLoading] = useState(false);
   const [editError, setEditError] = useState("");
@@ -108,6 +111,7 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
         body: JSON.stringify({
           displayName: editName.trim(),
           roomNumber: editRoom.trim() || null,
+          nickname: editNickname,
         }),
       });
       const resJson = await res.json();
@@ -118,7 +122,8 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
         ...prev,
         player: {
           ...prev.player,
-          displayName: editName.trim(),
+          displayName: resJson.user?.displayName ?? editName.trim(),
+          nickname: resJson.user?.nickname ?? (editNickname.trim().replace(/^["“'”]+|["“'”]+$/g, "").trim() || null),
           roomNumber: editRoom.trim() || null,
         },
       }));
@@ -245,6 +250,47 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                         className="w-28 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500"
                       />
                     </div>
+
+                    {/* Nickname section gated to 50 games played */}
+                    {(() => {
+                      const gamesPlayed = data.player.matchesPlayed ?? 0;
+                      const isUnlocked = gamesPlayed >= 50 || Boolean(data.player.nickname);
+
+                      if (isUnlocked) {
+                        return (
+                          <div className="bg-purple-950/20 border border-purple-500/30 rounded-lg p-2.5 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[11px] font-bold text-purple-300 flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-purple-400" /> Player Nickname (50+ Games Milestone Unlocked)
+                              </label>
+                              <span className="text-[10px] font-mono text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20">
+                                {gamesPlayed} games played
+                              </span>
+                            </div>
+                            <input
+                              type="text"
+                              value={editNickname}
+                              onChange={(e) => setEditNickname(e.target.value)}
+                              placeholder='e.g. The Chosen One (leave blank to remove)'
+                              className="w-full bg-slate-950 border border-purple-500/40 rounded-lg px-2.5 py-1.5 text-xs text-purple-200 placeholder-purple-400/30 focus:outline-none focus:border-purple-400 font-medium"
+                            />
+                            <p className="text-[10px] text-slate-400">
+                              Preview: <strong className="text-purple-300 font-semibold">{formatPlayerName(editName || data.player.displayName, editNickname || "Nickname")}</strong>
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="flex items-center gap-2 bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-400">
+                          <Lock className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                          <div className="text-[11px]">
+                            <strong className="text-slate-300">Nickname Locked:</strong> Unlocks after 50 games played ({gamesPlayed}/50 played – {50 - gamesPlayed} more to unlock)
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     {editError && (
                       <p className="text-xs text-rose-400 font-medium">{editError}</p>
                     )}
@@ -275,16 +321,17 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
                 ) : (
                   <div className="flex items-center gap-2.5">
                     <h2 className="text-2xl font-black text-white tracking-tight">
-                      {data.player.displayName}
+                      {formatPlayerName(data.player.displayName, data.player.nickname)}
                     </h2>
                     <button
                       onClick={() => {
                         setEditName(data.player.displayName);
+                        setEditNickname(data.player.nickname || "");
                         setEditRoom(data.player.roomNumber || "");
                         setIsEditing(true);
                       }}
                       className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border border-slate-700/60 transition"
-                      title="Edit player name or room number"
+                      title="Edit player name, nickname, or room number"
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </button>

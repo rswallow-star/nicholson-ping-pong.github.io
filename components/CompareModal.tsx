@@ -15,11 +15,13 @@ import {
   Target,
   Zap,
 } from "lucide-react";
+import { formatPlayerName } from "@/lib/formatName";
 
 interface CompareModalProps {
   players: Array<{
     id: string;
     displayName: string;
+    nickname?: string | null;
     roomNumber: string | null;
     rating?: { currentElo: number } | null;
   }>;
@@ -124,7 +126,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                 <option value="">Select Player 1</option>
                 {players.map((p) => (
                   <option key={`p1-${p.id}`} value={p.id}>
-                    {p.displayName} {p.roomNumber ? `(Rm ${p.roomNumber})` : ""}{" "}
+                    {formatPlayerName(p.displayName, p.nickname)} {p.roomNumber ? `(Rm ${p.roomNumber})` : ""}{" "}
                     {p.rating ? `[${p.rating.currentElo.toFixed(0)}]` : ""}
                   </option>
                 ))}
@@ -153,7 +155,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                 <option value="">Select Player 2</option>
                 {players.map((p) => (
                   <option key={`p2-${p.id}`} value={p.id}>
-                    {p.displayName} {p.roomNumber ? `(Rm ${p.roomNumber})` : ""}{" "}
+                    {formatPlayerName(p.displayName, p.nickname)} {p.roomNumber ? `(Rm ${p.roomNumber})` : ""}{" "}
                     {p.rating ? `[${p.rating.currentElo.toFixed(0)}]` : ""}
                   </option>
                 ))}
@@ -422,7 +424,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                     <div className="flex items-baseline justify-between mb-2">
                       <div>
                         <div className="text-xs font-semibold text-emerald-400 truncate max-w-[150px] sm:max-w-none">
-                          {p1.displayName}
+                          {formatPlayerName(p1.displayName, p1.nickname)}
                         </div>
                         <div className="text-3xl font-black font-mono text-white">
                           {winChanceP1}%
@@ -435,7 +437,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
 
                       <div className="text-right">
                         <div className="text-xs font-semibold text-purple-400 truncate max-w-[150px] sm:max-w-none">
-                          {p2.displayName}
+                          {formatPlayerName(p2.displayName, p2.nickname)}
                         </div>
                         <div className="text-3xl font-black font-mono text-white">
                           {winChanceP2}%
@@ -448,12 +450,12 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                       <div
                         style={{ width: `${winChanceP1}%` }}
                         className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full transition-all duration-500"
-                        title={`${p1.displayName}: ${winChanceP1}%`}
+                        title={`${formatPlayerName(p1.displayName, p1.nickname)}: ${winChanceP1}%`}
                       />
                       <div
                         style={{ width: `${winChanceP2}%` }}
                         className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full transition-all duration-500"
-                        title={`${p2.displayName}: ${winChanceP2}%`}
+                        title={`${formatPlayerName(p2.displayName, p2.nickname)}: ${winChanceP2}%`}
                       />
                     </div>
 
@@ -525,7 +527,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                   {/* Side-by-Side Stat Comparison Table */}
                   <div className="bg-slate-950/60 border border-slate-800 rounded-2xl overflow-hidden">
                     <div className="py-2.5 px-4 bg-slate-950/90 border-b border-slate-800 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-400">
-                      <span className="text-emerald-400 truncate max-w-[120px]">{p1.displayName}</span>
+                      <span className="text-emerald-400 truncate max-w-[140px]">{formatPlayerName(p1.displayName, p1.nickname)}</span>
                       <span className="text-slate-500 flex items-center gap-1">
                         <span>Metric</span>
                         {formatFilter !== "all" && (
@@ -534,7 +536,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                           </span>
                         )}
                       </span>
-                      <span className="text-purple-400 truncate max-w-[120px] text-right">{p2.displayName}</span>
+                      <span className="text-purple-400 truncate max-w-[140px] text-right">{formatPlayerName(p2.displayName, p2.nickname)}</span>
                     </div>
 
                     <div className="divide-y divide-slate-800/60 text-xs sm:text-sm">
@@ -1012,8 +1014,8 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                                   }`}
                                 >
                                   {isP1Winner
-                                    ? `${p1.displayName} Won`
-                                    : `${p2.displayName} Won`}
+                                    ? `${formatPlayerName(p1.displayName, p1.nickname)} Won`
+                                    : `${formatPlayerName(p2.displayName, p2.nickname)} Won`}
                                 </span>
                                 <div>
                                   <div className="font-semibold text-white">

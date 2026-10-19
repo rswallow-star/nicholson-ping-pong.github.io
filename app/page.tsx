@@ -20,10 +20,12 @@ import {
 import { PlayerStatsModal } from "@/components/PlayerStatsModal";
 import { CompareModal } from "@/components/CompareModal";
 import { EditMatchModal } from "@/components/EditMatchModal";
+import { formatPlayerName } from "@/lib/formatName";
 
 interface Player {
   id: string;
   displayName: string;
+  nickname?: string | null;
   roomNumber: string | null;
   rating: {
     currentElo: number;
@@ -44,8 +46,8 @@ interface Match {
   status: string;
   notes: string | null;
   createdAt: string;
-  submitter: { id: string; displayName: string; roomNumber: string | null };
-  opponent: { id: string; displayName: string; roomNumber: string | null };
+  submitter: { id: string; displayName: string; nickname?: string | null; roomNumber: string | null };
+  opponent: { id: string; displayName: string; nickname?: string | null; roomNumber: string | null };
 }
 
 export default function HomePage() {
@@ -262,6 +264,7 @@ export default function HomePage() {
   const filteredPlayers = players.filter(
     (p) =>
       p.displayName.toLowerCase().includes(search.toLowerCase()) ||
+      (p.nickname && p.nickname.toLowerCase().includes(search.toLowerCase())) ||
       (p.roomNumber && p.roomNumber.toLowerCase().includes(search.toLowerCase()))
   );
 
@@ -354,7 +357,7 @@ export default function HomePage() {
                     <div>
                       <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
                         <span className="flex items-center gap-2">
-                          Submitted by <strong className="text-white">{m.submitter.displayName}</strong>
+                          Submitted by <strong className="text-white">{formatPlayerName(m.submitter.displayName, m.submitter.nickname)}</strong>
                           <span
                             className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
                               isGameTo11
@@ -372,14 +375,14 @@ export default function HomePage() {
 
                       <div className="flex items-center justify-between py-2 border-y border-slate-800/60 my-2">
                         <div>
-                          <div className="text-sm font-bold text-white">{m.submitter.displayName}</div>
+                          <div className="text-sm font-bold text-white">{formatPlayerName(m.submitter.displayName, m.submitter.nickname)}</div>
                           <div className="text-xs text-slate-500">Room {m.submitter.roomNumber || "N/A"}</div>
                         </div>
                         <div className="text-2xl font-black font-mono text-emerald-400">
                           {m.submitterScore} – {m.opponentScore}
                         </div>
                         <div className="text-right">
-                          <div className="text-sm font-bold text-white">{m.opponent.displayName}</div>
+                          <div className="text-sm font-bold text-white">{formatPlayerName(m.opponent.displayName, m.opponent.nickname)}</div>
                           <div className="text-xs text-slate-500">Room {m.opponent.roomNumber || "N/A"}</div>
                         </div>
                       </div>
@@ -526,7 +529,7 @@ export default function HomePage() {
                             title="Click to view full player stats & ELO graph"
                           >
                             <span className="group-hover:underline underline-offset-2">
-                              {player.displayName}
+                              {formatPlayerName(player.displayName, player.nickname)}
                             </span>
                             {isProvisional && (
                               <span
@@ -628,7 +631,8 @@ export default function HomePage() {
                         {is11 ? "11" : "21"}
                       </span>
                       <span className="font-semibold text-white">
-                        {rm.submitter.displayName} vs {rm.opponent.displayName}
+                        {formatPlayerName(rm.submitter.displayName, rm.submitter.nickname)} vs{" "}
+                        {formatPlayerName(rm.opponent.displayName, rm.opponent.nickname)}
                       </span>
                       {rm.notes && (
                         <span className="text-slate-500 italic hidden sm:inline text-[11px]">
@@ -826,7 +830,7 @@ export default function HomePage() {
                   <option value="">Select Submitter</option>
                   {players.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.displayName} {p.roomNumber ? `(Rm ${p.roomNumber})` : ""}
+                      {formatPlayerName(p.displayName, p.nickname)} {p.roomNumber ? `(Rm ${p.roomNumber})` : ""}
                     </option>
                   ))}
                 </select>
@@ -845,7 +849,7 @@ export default function HomePage() {
                   <option value="">Select Opponent</option>
                   {players.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.displayName} {p.roomNumber ? `(Rm ${p.roomNumber})` : ""}
+                      {formatPlayerName(p.displayName, p.nickname)} {p.roomNumber ? `(Rm ${p.roomNumber})` : ""}
                     </option>
                   ))}
                 </select>

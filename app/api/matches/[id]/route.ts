@@ -16,10 +16,10 @@ export async function GET(
       where: { id },
       include: {
         submitter: {
-          select: { id: true, displayName: true, roomNumber: true },
+          select: { id: true, displayName: true, nickname: true, roomNumber: true },
         },
         opponent: {
-          select: { id: true, displayName: true, roomNumber: true },
+          select: { id: true, displayName: true, nickname: true, roomNumber: true },
         },
       },
     });
@@ -113,8 +113,8 @@ export async function PATCH(
             status: body.status || existingMatch.status,
           },
           include: {
-            submitter: { select: { id: true, displayName: true, roomNumber: true } },
-            opponent: { select: { id: true, displayName: true, roomNumber: true } },
+            submitter: { select: { id: true, displayName: true, nickname: true, roomNumber: true } },
+            opponent: { select: { id: true, displayName: true, nickname: true, roomNumber: true } },
           },
         });
 

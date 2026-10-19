@@ -12,10 +12,12 @@ import {
   Trophy,
   ShieldAlert,
 } from "lucide-react";
+import { formatPlayerName } from "@/lib/formatName";
 
 interface PlayerOption {
   id: string;
   displayName: string;
+  nickname?: string | null;
   roomNumber?: string | null;
 }
 
@@ -231,14 +233,21 @@ export const EditMatchModal: React.FC<EditMatchModalProps> = ({
     }
   };
 
+  const subPlayer = allPlayers.find((p) => p.id === submitterId);
   const submitterName =
-    allPlayers.find((p) => p.id === submitterId)?.displayName ||
-    matchData?.submitter?.displayName ||
-    "Player 1";
+    subPlayer
+      ? formatPlayerName(subPlayer.displayName, subPlayer.nickname)
+      : matchData?.submitter
+      ? formatPlayerName(matchData.submitter.displayName, (matchData.submitter as any).nickname)
+      : "Player 1";
+
+  const oppPlayer = allPlayers.find((p) => p.id === opponentId);
   const opponentName =
-    allPlayers.find((p) => p.id === opponentId)?.displayName ||
-    matchData?.opponent?.displayName ||
-    "Player 2";
+    oppPlayer
+      ? formatPlayerName(oppPlayer.displayName, oppPlayer.nickname)
+      : matchData?.opponent
+      ? formatPlayerName(matchData.opponent.displayName, (matchData.opponent as any).nickname)
+      : "Player 2";
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -364,7 +373,7 @@ export const EditMatchModal: React.FC<EditMatchModalProps> = ({
                       >
                         {allPlayers.map((p) => (
                           <option key={p.id} value={p.id}>
-                            {p.displayName} {p.roomNumber ? `(Rm ${p.roomNumber})` : ""}
+                            {formatPlayerName(p.displayName, p.nickname)} {p.roomNumber ? `(Rm ${p.roomNumber})` : ""}
                           </option>
                         ))}
                       </select>
@@ -381,7 +390,7 @@ export const EditMatchModal: React.FC<EditMatchModalProps> = ({
                       >
                         {allPlayers.map((p) => (
                           <option key={p.id} value={p.id}>
-                            {p.displayName} {p.roomNumber ? `(Rm ${p.roomNumber})` : ""}
+                            {formatPlayerName(p.displayName, p.nickname)} {p.roomNumber ? `(Rm ${p.roomNumber})` : ""}
                           </option>
                         ))}
                       </select>

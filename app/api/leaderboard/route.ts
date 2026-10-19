@@ -23,10 +23,10 @@ export async function GET() {
       },
       include: {
         submitter: {
-          select: { id: true, displayName: true, roomNumber: true },
+          select: { id: true, displayName: true, nickname: true, roomNumber: true },
         },
         opponent: {
-          select: { id: true, displayName: true, roomNumber: true },
+          select: { id: true, displayName: true, nickname: true, roomNumber: true },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -38,10 +38,10 @@ export async function GET() {
       },
       include: {
         submitter: {
-          select: { id: true, displayName: true, roomNumber: true },
+          select: { id: true, displayName: true, nickname: true, roomNumber: true },
         },
         opponent: {
-          select: { id: true, displayName: true, roomNumber: true },
+          select: { id: true, displayName: true, nickname: true, roomNumber: true },
         },
       },
       orderBy: { createdAt: "desc" },

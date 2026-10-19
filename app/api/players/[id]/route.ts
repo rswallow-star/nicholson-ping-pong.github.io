@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { formatPlayerName } from "@/lib/formatName";
 
 export const dynamic = "force-dynamic";
 
@@ -38,8 +39,8 @@ export async function GET(
       include: {
         match: {
           include: {
-            submitter: { select: { id: true, displayName: true, roomNumber: true } },
-            opponent: { select: { id: true, displayName: true, roomNumber: true } },
+            submitter: { select: { id: true, displayName: true, nickname: true, roomNumber: true } },
+            opponent: { select: { id: true, displayName: true, nickname: true, roomNumber: true } },
           },
         },
       },
@@ -52,8 +53,8 @@ export async function GET(
         OR: [{ submitterId: id }, { opponentId: id }],
       },
       include: {
-        submitter: { select: { id: true, displayName: true, roomNumber: true, rating: true } },
-        opponent: { select: { id: true, displayName: true, roomNumber: true, rating: true } },
+        submitter: { select: { id: true, displayName: true, nickname: true, roomNumber: true, rating: true } },
+        opponent: { select: { id: true, displayName: true, nickname: true, roomNumber: true, rating: true } },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -117,7 +118,7 @@ export async function GET(
       if (isWin && oppEloDefeated) {
         if (!highestEloDefeated || oppEloDefeated > highestEloDefeated.elo) {
           highestEloDefeated = {
-            name: opponent.displayName,
+            name: formatPlayerName(opponent.displayName, opponent.nickname),
             elo: Math.round(oppEloDefeated * 10) / 10,
           };
         }
@@ -131,7 +132,9 @@ export async function GET(
         isWin,
         myScore,
         theirScore,
-        opponentName: opponent.displayName,
+        opponentName: formatPlayerName(opponent.displayName, opponent.nickname),
+        opponentRawName: opponent.displayName,
+        opponentNickname: opponent.nickname,
         opponentRoom: opponent.roomNumber,
         isGameTo11: is11,
         delta: historyEntry ? historyEntry.delta : null,
@@ -158,8 +161,8 @@ export async function GET(
         date: h.createdAt,
         opponent:
           h.match.submitterId === id
-            ? h.match.opponent.displayName
-            : h.match.submitter.displayName,
+            ? formatPlayerName(h.match.opponent.displayName, h.match.opponent.nickname)
+            : formatPlayerName(h.match.submitter.displayName, h.match.submitter.nickname),
       })),
     ];
 
@@ -242,6 +245,8 @@ export async function GET(
       player: {
         id: user.id,
         displayName: user.displayName,
+        nickname: user.nickname,
+        formattedName: formatPlayerName(user.displayName, user.nickname),
         roomNumber: user.roomNumber,
         rank,
         currentElo: user.rating?.currentElo ?? 1200.0,
@@ -350,7 +355,7 @@ export async function PATCH(
   try {
     const { id } = params;
     const body = await req.json();
-    const { displayName, roomNumber } = body;
+    const { displayName, roomNumber, nickname } = body;
 
     if (!displayName || !displayName.trim()) {
       return NextResponse.json({ error: "Player name is required." }, { status: 400 });
@@ -373,18 +378,59 @@ export async function PATCH(
       );
     }
 
+    const currentUser = await prisma.user.findUnique({
+      where: { id },
+      include: { rating: true },
+    });
+
+    if (!currentUser) {
+      return NextResponse.json({ error: "Player not found." }, { status: 404 });
+    }
+
+    const updateData: {
+      displayName: string;
+      roomNumber: string | null;
+      nickname?: string | null;
+    } = {
+      displayName: trimmedName,
+      roomNumber: roomNumber ? roomNumber.trim() : null,
+    };
+
+    if (nickname !== undefined) {
+      if (nickname && typeof nickname === "string") {
+        // Strip out existing surrounding quotes if the user typed them
+        const stripped = nickname.trim().replace(/^["“'”]+|["“'”]+$/g, "").trim();
+        if (stripped.length > 0) {
+          const gamesPlayed = currentUser.rating?.matchesPlayed ?? 0;
+          if (gamesPlayed < 50 && !currentUser.nickname) {
+            return NextResponse.json(
+              {
+                error: `Nicknames only unlock once a player has played at least 50 games. (${gamesPlayed}/50 games played).`,
+              },
+              { status: 400 }
+            );
+          }
+          updateData.nickname = stripped;
+        } else {
+          updateData.nickname = null;
+        }
+      } else {
+        updateData.nickname = null;
+      }
+    }
+
     const updated = await prisma.user.update({
       where: { id },
-      data: {
-        displayName: trimmedName,
-        roomNumber: roomNumber ? roomNumber.trim() : null,
-      },
+      data: updateData,
     });
 
     return NextResponse.json({
       success: true,
       message: "Player updated successfully!",
-      user: updated,
+      user: {
+        ...updated,
+        formattedName: formatPlayerName(updated.displayName, updated.nickname),
+      },
     });
   } catch (error: any) {
     console.error("Error updating player:", error);
