@@ -31,20 +31,52 @@ export interface EloCalculationResult {
   gameTypeWeight: number;
   playerAStreakMultiplier: number;
   playerBStreakMultiplier: number;
+  playerAShutoutMultiplier: number;
+  playerBShutoutMultiplier: number;
 }
 
 /**
- * Returns dynamic K-factor based on player experience and current skill rating.
+ * Returns dynamic K-factor based on player experience:
  * - Under 10 matches: K = 48 (Provisional tier for rapid calibration)
- * - Under 1600 ELO:   K = 32 (Developing casual tier)
- * - Under 2000 ELO:   K = 24 (Established dorm veterans)
- * - 2000+ ELO:        K = 16 (Top-tier master stability)
+ * - 10+ matches:      K = 32 (Regular tier consistent across all Elo rating levels)
+ *
+ * A game against 2 provisional players counts as provisional for both (K=48).
+ * A game between a provisional and a regular player counts as provisional for the provisional player (K=48),
+ * and regular for the regular player (K=32). Higher Elo players maintain standard K=32.
  */
-export function getKFactor(matchesPlayed: number, currentRating: number): number {
+export function getKFactor(matchesPlayed: number, currentRating?: number): number {
   if (matchesPlayed < 10) return 48;
-  if (currentRating < 1600) return 32;
-  if (currentRating < 2000) return 24;
-  return 16;
+  return 32;
+}
+
+/**
+ * Calculates Shutout Multiplier (Skunk rule):
+ * - 11-0 victory in Game to 11: 2.0x multiplier for the winner
+ * - 21-0 victory in Game to 21: 3.0x multiplier for the winner
+ * - Does NOT apply against provisional players (loser matchesPlayed < 10)
+ * - Otherwise: 1.0x (baseline)
+ */
+export function getShutoutMultiplier(
+  winnerScore: number,
+  loserScore: number,
+  loserMatchesCount: number,
+  gameType: 11 | 21 = 21
+): number {
+  // Must be a complete shutout
+  if (loserScore !== 0) return 1.0;
+
+  // Shutout multiplier does not count against provisional players (< 10 matches)
+  if (loserMatchesCount < 10) return 1.0;
+
+  if (gameType === 11 && winnerScore === 11) {
+    return 2.0;
+  }
+
+  if (gameType === 21 && winnerScore === 21) {
+    return 3.0;
+  }
+
+  return 1.0;
 }
 
 /**
@@ -213,9 +245,21 @@ export function calculateElo(input: EloCalculationInput): EloCalculationResult {
   const streakMultiplierA = isPlayerAWinner ? getStreakMultiplier(streakA) : 1.0;
   const streakMultiplierB = !isPlayerAWinner ? getStreakMultiplier(streakB) : 1.0;
 
-  // Scaled deltas with MOV, Game-Length weights, and Win-Streak multiplier for the winner
-  const rawDeltaA = kA * (actualScoreA - expectedA) * mov * gameTypeWeight * streakMultiplierA;
-  const rawDeltaB = kB * (actualScoreB - expectedB) * mov * gameTypeWeight * streakMultiplierB;
+  // Shutout Multipliers (Skunk rule):
+  // - 11-0 in game to 11 = 2.0x multiplier
+  // - 21-0 in game to 21 = 3.0x multiplier
+  // - Does not count against provisional players (< 10 matches played)
+  // - Only affects the winner's ELO (loser loses regular amount)
+  const shutoutMultiplierA = isPlayerAWinner
+    ? getShutoutMultiplier(playerAScore, playerBScore, playerBMatchesCount, gameType)
+    : 1.0;
+  const shutoutMultiplierB = !isPlayerAWinner
+    ? getShutoutMultiplier(playerBScore, playerAScore, playerAMatchesCount, gameType)
+    : 1.0;
+
+  // Scaled deltas with MOV, Game-Length weights, Win-Streak multiplier, and Shutout multiplier for the winner
+  const rawDeltaA = kA * (actualScoreA - expectedA) * mov * gameTypeWeight * streakMultiplierA * shutoutMultiplierA;
+  const rawDeltaB = kB * (actualScoreB - expectedB) * mov * gameTypeWeight * streakMultiplierB * shutoutMultiplierB;
 
   // Round to 1 decimal place for clean dorm display
   const deltaA = Math.round(rawDeltaA * 10) / 10;
@@ -236,5 +280,7 @@ export function calculateElo(input: EloCalculationInput): EloCalculationResult {
     gameTypeWeight,
     playerAStreakMultiplier: streakMultiplierA,
     playerBStreakMultiplier: streakMultiplierB,
+    playerAShutoutMultiplier: shutoutMultiplierA,
+    playerBShutoutMultiplier: shutoutMultiplierB,
   };
 }

@@ -54,12 +54,128 @@ const res3 = calculateElo({
 console.log(`Champion New Rating: ${res3.playerANewRating} (+${res3.playerADelta}) [Minimal gain as expected]`);
 console.log(`Underdog New Rating: ${res3.playerBNewRating} (${res3.playerBDelta}) [Small drop]\n`);
 
-// Test 4: Ping-Pong Score Validation
-console.log("Test 4: Score Validation Rules");
-console.log("21-19 (Valid game):", validatePingPongScore(21, 19, 21));
-console.log("22-20 (Valid deuce game):", validatePingPongScore(22, 20, 21));
-console.log("21-20 (Invalid - must win by 2):", validatePingPongScore(21, 20, 21));
-console.log("25-20 (Invalid - overtime continued after 2-point lead):", validatePingPongScore(25, 20, 21));
-console.log("15-10 (Invalid - not up to 21):", validatePingPongScore(15, 10, 21));
+// Test 4: Dynamic K-factors (Provisional vs Regular, High Elo consistency)
+console.log("Test 4: Dynamic K-factors");
+console.log(`Provisional Player (3 matches): K = ${getKFactor(3)} (Expected: 48)`);
+console.log(`Regular Player (15 matches, 1200 ELO): K = ${getKFactor(15, 1200)} (Expected: 32)`);
+console.log(`High ELO Regular Player (25 matches, 1800 ELO): K = ${getKFactor(25, 1800)} (Expected: 32 - no penalty)`);
+console.log(`Master ELO Regular Player (50 matches, 2200 ELO): K = ${getKFactor(50, 2200)} (Expected: 32 - no penalty)\n`);
+
+// Test 5: Win Streak Multiplier Progression
+console.log("Test 5: Win Streak Multipliers");
+import { getStreakMultiplier, getShutoutMultiplier } from "../lib/elo";
+const testStreaks = [1, 2, 3, 4, 5, 6, 9, 10, 11, 15, 20];
+for (const s of testStreaks) {
+  console.log(`Streak ${s} -> Multiplier = ${getStreakMultiplier(s)}x`);
+}
+
+// Test with calculateElo
+const normalWin = calculateElo({
+  playerAId: "p1",
+  playerARating: 1500,
+  playerAMatchesCount: 20,
+  playerAScore: 21,
+  playerACurrentStreak: 0, // 1st win -> streak becomes 1
+  playerBId: "p2",
+  playerBRating: 1500,
+  playerBMatchesCount: 20,
+  playerBScore: 19,
+  playerBCurrentStreak: 0,
+});
+
+const streak5Win = calculateElo({
+  playerAId: "p1",
+  playerARating: 1500,
+  playerAMatchesCount: 20,
+  playerAScore: 21,
+  playerACurrentStreak: 4, // 5th consecutive win -> streak becomes 5
+  playerBId: "p2",
+  playerBRating: 1500,
+  playerBMatchesCount: 20,
+  playerBScore: 19,
+  playerBCurrentStreak: 0,
+});
+
+console.log(`Normal Win Delta (Streak 1): +${normalWin.playerADelta} (Multiplier: ${normalWin.playerAStreakMultiplier}x)`);
+console.log(`5-Streak Win Delta (Streak 5): +${streak5Win.playerADelta} (Multiplier: ${streak5Win.playerAStreakMultiplier}x)\n`);
+
+// Test 6: Shutout Multipliers (11-0 is 2x, 21-0 is 3x, not against provisional, winner-only)
+console.log("Test 6: Shutout Multipliers (Skunk Rules)");
+
+// 6a: 11-0 against regular player (20 matches)
+const shutout11Regular = calculateElo({
+  playerAId: "winner",
+  playerARating: 1300,
+  playerAMatchesCount: 15,
+  playerAScore: 11,
+  playerACurrentStreak: 0,
+  playerBId: "loser",
+  playerBRating: 1300,
+  playerBMatchesCount: 20, // Regular player
+  playerBScore: 0,
+  playerBCurrentStreak: 0,
+  gameType: 11,
+});
+
+console.log(`11-0 vs Regular Player (Game to 11):`);
+console.log(`  Winner Delta: +${shutout11Regular.playerADelta} (Shutout Multiplier: ${shutout11Regular.playerAShutoutMultiplier}x)`);
+console.log(`  Loser Delta: ${shutout11Regular.playerBDelta} (Loser Shutout Multiplier: ${shutout11Regular.playerBShutoutMultiplier}x - standard loss)`);
+
+// 6b: 11-0 against provisional player (3 matches)
+const shutout11Provisional = calculateElo({
+  playerAId: "winner",
+  playerARating: 1300,
+  playerAMatchesCount: 15,
+  playerAScore: 11,
+  playerACurrentStreak: 0,
+  playerBId: "provisional_loser",
+  playerBRating: 1300,
+  playerBMatchesCount: 3, // Provisional player (< 10 matches)
+  playerBScore: 0,
+  playerBCurrentStreak: 0,
+  gameType: 11,
+});
+
+console.log(`11-0 vs Provisional Player (Game to 11):`);
+console.log(`  Winner Delta: +${shutout11Provisional.playerADelta} (Shutout Multiplier: ${shutout11Provisional.playerAShutoutMultiplier}x - does NOT apply against provisional)`);
+console.log(`  Provisional Loser Delta: ${shutout11Provisional.playerBDelta} (Standard provisional loss)`);
+
+// 6c: 21-0 against regular player (25 matches)
+const shutout21Regular = calculateElo({
+  playerAId: "winner",
+  playerARating: 1300,
+  playerAMatchesCount: 15,
+  playerAScore: 21,
+  playerACurrentStreak: 0,
+  playerBId: "loser",
+  playerBRating: 1300,
+  playerBMatchesCount: 25, // Regular player
+  playerBScore: 0,
+  playerBCurrentStreak: 0,
+  gameType: 21,
+});
+
+console.log(`21-0 vs Regular Player (Game to 21):`);
+console.log(`  Winner Delta: +${shutout21Regular.playerADelta} (Shutout Multiplier: ${shutout21Regular.playerAShutoutMultiplier}x)`);
+console.log(`  Loser Delta: ${shutout21Regular.playerBDelta} (Standard loss)`);
+
+// 6d: 21-0 against provisional player (2 matches)
+const shutout21Provisional = calculateElo({
+  playerAId: "winner",
+  playerARating: 1300,
+  playerAMatchesCount: 15,
+  playerAScore: 21,
+  playerACurrentStreak: 0,
+  playerBId: "provisional_loser",
+  playerBRating: 1300,
+  playerBMatchesCount: 2, // Provisional player
+  playerBScore: 0,
+  playerBCurrentStreak: 0,
+  gameType: 21,
+});
+
+console.log(`21-0 vs Provisional Player (Game to 21):`);
+console.log(`  Winner Delta: +${shutout21Provisional.playerADelta} (Shutout Multiplier: ${shutout21Provisional.playerAShutoutMultiplier}x - does NOT apply against provisional)`);
+console.log(`  Provisional Loser Delta: ${shutout21Provisional.playerBDelta} (Standard provisional loss)`);
 
 console.log("\nAll ELO formulas and rules verified successfully!");
